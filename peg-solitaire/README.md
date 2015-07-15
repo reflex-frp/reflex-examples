@@ -12,4 +12,4 @@ Copy the files in the `static/images` directory to
 - [ ] Align and style text using css.
 - [ ] Add source button to go to this repo.
 - [ ] Host somewhere.
-- [ ] Add `default.nex` file.
+- [ ] Add `default.nix` file.

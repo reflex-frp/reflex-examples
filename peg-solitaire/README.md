@@ -14,6 +14,7 @@ Copy the files in the `static/images` directory to
 
 - [X] Update to use develop branch of `reflex-dom`
 - [X] Align and style text using css.
-- [ ] Add source button to go to this repo.
+- [X] Add source button to go to this repo.
 - [ ] Host somewhere.
 - [X] Add `default.nix` file.
+- [ ] Use font awesome for GitHub icon

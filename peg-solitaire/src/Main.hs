@@ -45,7 +45,8 @@ data Compass = North | East | South | West deriving (Enum)
 
 main :: IO ()
 main = mainWidgetWithCss ( $(embedFile "static/css/normalize.css")
-                        <> $(embedFile "static/css/skeleton.css") ) $ do
+                        <> $(embedFile "static/css/skeleton.css")
+                        <> $(embedFile "static/css/font-awesome.min.css")) $ do
   elClass "div" "container" $ do
     el "br" (return ())
     elAttr "h1" ("style" =: "text-align: center") $ text "PEG SOLITAIRE"
@@ -57,6 +58,7 @@ main = mainWidgetWithCss ( $(embedFile "static/css/normalize.css")
             elAttr "h3" ("style" =: "text-align: center") $
                     dynText =<< mapDyn (\g -> "Score: " ++ (show $ score g)) gs
         return ()
+    footer
 
 -- | This is slightly complicated by the fact that some moves are not uniquely
 --   determined by there starting position. In this case we need to remember
@@ -116,6 +118,16 @@ mkBoard gs = do
   elAttr "table" ("style" =: "margin-left: auto; margin-right: auto") $ do
     rows <- mapM (row gs) [-3..3]
     return $ leftmost rows
+
+-- | Display static information about the application
+footer :: MonadWidget t m => m ()
+footer = do
+  el "div" $ do
+    el "p" $ do
+      text "source: "
+      elAttr "a" ("href" =: "https://github.com/reflex-frp/reflex-examples/tree/master/peg-solitaire")
+             $ text "GitHub"
+    -- elClass "i" "fa fa-github" (return ())
 
 --------------------------------------------------------------------------------
 -- Game Logic

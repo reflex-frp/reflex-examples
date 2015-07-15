@@ -1,4 +1,5 @@
 # Peg Solitaire
+A simple example of a move by move single player game using reflex-dom.
 
 ## Building
 Clone this repo then build in a sandbox using ghcjs or ghc.

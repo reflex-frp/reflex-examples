@@ -5,8 +5,10 @@ the reflex frp library and reflex-dom.
 ## Building
 Clone this repo then build in a sandbox using ghcjs or ghc.
 Copy the files in the `static/images` directory to
-`dist/build/peg-solitaire.jsexe` thn open
+`dist/build/peg-solitaire.jsexe` then open
 `dist/build/peg-solitaire.jsexe/index.html` in a browser.
+
+![screen](http://i.imgur.com/wljKlvs.png)
 
 ## To do
 

@@ -47,13 +47,15 @@ main :: IO ()
 main = mainWidgetWithCss ( $(embedFile "static/css/normalize.css")
                         <> $(embedFile "static/css/skeleton.css") ) $ do
   elClass "div" "container" $ do
-    el "h1" $ text "Peg Solitaire"
+    el "br" (return ())
+    elAttr "h1" ("style" =: "text-align: center") $ text "PEG SOLITAIRE"
     el "div" $ do
       el "br" (return ())
       el "div" $ do
         rec gs  <- foldDyn move initialState pos
             pos <- mkBoard gs
-            el "h3" $ dynText =<< mapDyn (\g -> "score: " ++ (show $ score g)) gs
+            elAttr "h3" ("style" =: "text-align: center") $
+                    dynText =<< mapDyn (\g -> "Score: " ++ (show $ score g)) gs
         return ()
 
 -- | This is slightly complicated by the fact that some moves are not uniquely
@@ -111,7 +113,7 @@ row gs j = do
 -- The game board, returns the coordinates of the clicked cell.
 mkBoard :: MonadWidget t m => (Dynamic t GameState) -> m (Event t Point)
 mkBoard gs = do
-  el "table" $ do
+  elAttr "table" ("style" =: "margin-left: auto; margin-right: auto") $ do
     rows <- mapM (row gs) [-3..3]
     return $ leftmost rows
 

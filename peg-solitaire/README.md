@@ -13,7 +13,7 @@ Copy the files in the `static/images` directory to
 ## To do
 
 - [X] Update to use develop branch of `reflex-dom`
-- [ ] Align and style text using css.
+- [X] Align and style text using css.
 - [ ] Add source button to go to this repo.
 - [ ] Host somewhere.
 - [X] Add `default.nix` file.

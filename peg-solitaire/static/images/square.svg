@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+    "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" height="75.0" stroke-opacity="1" viewBox="0 0 75 75" font-size="1" width="75.0" xmlns:xlink="http://www.w3.org/1999/xlink" stroke="rgb(0,0,0)" version="1.1">
+  <defs>
+  </defs>
+  <defs>
+    <radialGradient gradientUnits="userSpaceOnUse" spreadMethod="pad" fx="0.0" fy="0.0" gradientTransform="matrix(75.0,-0.0,0.0,-75.0,37.49999999999999,37.5)" cy="0.0" r="0.7" id="gradient0" cx="0.0">
+      <stop stop-opacity="1.0" offset="0.14285714285714288" stop-color="rgb(128,128,128)"/>
+      <stop stop-opacity="1.0" offset="0.14285714285714288" stop-color="rgb(128,128,128)"/>
+      <stop stop-opacity="1.0" offset="1.0" stop-color="rgb(255,255,255)"/>
+    </radialGradient>
+  </defs>
+  <g stroke-linejoin="miter" stroke-opacity="1.0" fill-opacity="1" stroke="rgb(0,0,0)" stroke-width="0.0" fill="url(#gradient0)" stroke-linecap="butt" stroke-miterlimit="10.0">
+    <path d="M 75.0,75.0 l -8.326672684688674e-15,-75.0 h -75.0 l -8.326672684688674e-15,75.0 Z"/>
+  </g>
+</svg>

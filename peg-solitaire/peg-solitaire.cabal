@@ -11,7 +11,7 @@ Category: FRP
 Build-type: Simple
 Cabal-version: >=1.2
 
-executable reflex-lottery
+executable peg-solitaire
   hs-source-dirs: src
   main-is: Main.hs
   build-depends:

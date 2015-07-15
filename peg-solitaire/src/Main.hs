@@ -4,7 +4,6 @@
 
 module Main where
 
-import Control.Applicative ((<$))
 import Data.Array.IArray
 import Data.FileEmbed
 import Data.Monoid         ((<>))
@@ -90,7 +89,7 @@ cell :: MonadWidget t m => (Dynamic t GameState) -> Point -> m (Event t Point)
 cell gs p = el "td" $ do
     rec (e, _) <- elDynAttr' "img" attrs (return ())
         attrs  <- mapDyn (square p . board) gs
-    return $ p <$ _el_clicked e
+    return $ p <$ domEvent Click e
     where
       square pos bd
         | not $ onBoard pos = off

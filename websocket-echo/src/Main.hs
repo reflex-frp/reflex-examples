@@ -6,18 +6,33 @@ import Data.Monoid
 
 main :: IO ()
 main = mainWidget $ do
-  el "strong" $ do
-    elAttr "a" ("href" =: "https://github.com/ryantrinkle/reflex-dom" <> "target" =: "_blank") $ text "Reflex.Dom"
-    text " WebSocket test page"
-  el "p" $ do
-    text "Send a message to the "
-    elAttr "a" ("href" =: "https://www.websocket.org/echo.html" <> "target" =: "_blank") $ text "WebSocket.org"
-    text "'s websocket echo service:"
+  header
   rec t <- textInput $ def & setValue .~ fmap (const "") newMessage
       b <- button "Send"
       let newMessage = fmap ((:[]) . encodeUtf8 . T.pack) $ tag (current $ value t) $ leftmost [b, textInputGetEnter t]
   ws <- webSocket "ws://echo.websocket.org" $ def & webSocketConfig_send .~ newMessage
-  receivedMessages <- foldDyn (\a b -> b ++ [a]) [] $ _webSocket_recv ws
+  receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] $ _webSocket_recv ws
   el "p" $ text "Responses from the WebSocket.org echo service:"
-  el "ul" $ simpleList receivedMessages $ \m -> el "li" $ dynText =<< mapDyn (T.unpack . decodeUtf8) m
-  return ()
+  _ <- el "ul" $ simpleList receivedMessages $ \m -> el "li" $ dynText =<< mapDyn (T.unpack . decodeUtf8) m
+  footer
+
+linkNewTab :: MonadWidget t m => String -> String -> m ()
+linkNewTab href s = elAttr "a" ("href" =: href <> "target" =: "_blank") $ text s
+
+header :: MonadWidget t m => m ()
+header = do
+  el "strong" $ do
+    linkNewTab "https://github.com/ryantrinkle/reflex-dom" "Reflex.Dom"
+    text " WebSocket test page"
+  el "p" $ do
+    text "Send a message to the "
+    linkNewTab "https://www.websocket.org/echo.html" "WebSocket.org"
+    text "'s websocket echo service:"
+
+footer :: MonadWidget t m => m ()
+footer = do
+  el "hr" $ return ()
+  el "p" $ do
+    text "The code for this example can be found in the "
+    linkNewTab "https://github.com/reflex-frp/reflex-examples" "Reflex Examples"
+    text " repo."

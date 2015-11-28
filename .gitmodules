@@ -1,0 +1,3 @@
+[submodule "chat/try-reflex"]
+	path = chat/try-reflex
+	url = https://github.com/ryantrinkle/try-reflex.git

@@ -1,0 +1,16 @@
+name: reflex-examples-chat-client
+version: 0.1
+description: Simple chat client
+license: BSD3
+author: Ryan Trinkle
+maintainer: ryan.trinkle@gmail.com
+build-type: Simple
+cabal-version: >=1.2
+
+executable client
+  main-is: src/Main.hs
+  build-depends:
+    base,
+    lens,
+    aeson,
+    reflex-dom

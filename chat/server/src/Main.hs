@@ -8,6 +8,7 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Concurrent
+import Control.Applicative
 import Data.Aeson
 import Data.Aeson.TH
 import Data.IORef
@@ -113,7 +114,7 @@ main :: IO ()
 main = do
   sRef <- newIORef emptyState
   quickHttpServe $ route
-    [ ("", serveDirectory "static")
+    [ ("", serveDirectory "client.jsexe" <|> serveDirectory "static")
     , ("api", handleApi sRef)
     , ("state", handleState sRef)
     ]

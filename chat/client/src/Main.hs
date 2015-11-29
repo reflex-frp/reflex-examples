@@ -13,6 +13,7 @@ import Control.Monad.IO.Class
 import Control.Monad
 import Data.Maybe
 import Data.Monoid
+import Control.Monad.Trans.Maybe
 
 main :: IO ()
 main = mainWidget $ do
@@ -20,13 +21,16 @@ main = mainWidget $ do
   recipient <- el "div" recipientNickInput
   rec i <- textInput $ def & setValue .~ ("" <$ send)
       let send = textInputGetEnter i
-  let wsUp = leftmost [ tag (Up_Message . Message (Nick "ryan") (Left $ Nick "ryan") . T.pack <$> current (value i)) send
+  let wsUp = leftmost [ fmapMaybe (fmap Up_Message) $ tag (directMessage <$> current nick <*> current recipient <*> current (value i)) send
                       , fmapMaybe (fmap Up_AddNick) (updated nick)
                       ]
   ws <- webSocket "ws://localhost:8000/api" $ def
     & webSocketConfig_send .~ fmap ((:[]) . LBS.toStrict . encode) wsUp
   performEvent_ $ liftIO . print <$> _webSocket_recv ws
   return ()
+
+directMessage :: Maybe Nick -> Maybe Nick -> String -> Maybe Message
+directMessage sender recipient msg = Message <$> sender <*> (Left <$> recipient) <*> pure (T.pack msg)
 
 nickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
 nickInput = do

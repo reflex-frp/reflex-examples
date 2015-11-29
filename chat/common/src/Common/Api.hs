@@ -30,6 +30,8 @@ data Envelope a
 data Up
    = Up_AddNick Nick
    | Up_RemoveNick Nick
+   | Up_JoinChannel ChannelId Nick
+   | Up_LeaveChannel ChannelId Nick
    | Up_Message Message
    deriving (Show, Read, Eq, Ord)
 

@@ -25,7 +25,18 @@ main = mainWidget $ do
                      , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
                      , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
                      ]
-  ws <- webSocket "ws://localhost:8000/api" $ def
+  wv <- askWebView
+  host <- liftIO $ getLocationHost wv
+  protocol <- liftIO $ getLocationProtocol wv
+  let wsProtocol = case protocol of
+                     "file:" -> "ws:"
+                     "http:" -> "ws:"
+                     "https:" -> "wss:"
+                     _ -> error "Unrecognized protocol: " <> protocol
+      wsHost = case protocol of
+                 "file:" -> "localhost:8000"
+                 _ -> host
+  ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def
     & webSocketConfig_send .~ fmap (fmap (LBS.toStrict . encode)) wsUp
   let wsDown = fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
   history $ fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown

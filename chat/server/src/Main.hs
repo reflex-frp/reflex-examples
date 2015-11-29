@@ -44,6 +44,7 @@ withConnInState sRef c = bracket open close
         close cid = do
           atomicModifyIORef' sRef $ \s ->
             let s' = s & state_conns %~ Map.delete cid
+                       & state_nickToConn %~ fmap (Set.filter (/= cid)) --TODO: Create a reverse mapping to make this faster
             in (s', ())
 
 addNick :: Nick -> ConnId -> State -> State

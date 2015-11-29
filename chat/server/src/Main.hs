@@ -93,7 +93,7 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
       Up_Message m -> do
         s <- readIORef sRef
         t <- getCurrentTime
-        forM_ (conn : getConnsForDestination (_message_to m) s) $ \receiverConn -> do
+        forM_ (getConnsForDestination (_message_to m) s ++ getConnsForNick (_message_from m) s) $ \receiverConn -> do
           sendTextData receiverConn $ encode $ Down_Message $ Envelope t m
       Up_AddNick n -> atomicModifyIORef_' sRef $ addNick n cid
       Up_RemoveNick n -> atomicModifyIORef_' sRef $ removeNick n cid

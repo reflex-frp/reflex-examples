@@ -27,6 +27,7 @@ data State
    = State { _state_nextConnId :: ConnId
            , _state_conns :: Map ConnId Connection
            , _state_nickToConn :: Map Nick (Set ConnId)
+           , _state_channelToNick :: Map ChannelId (Set Nick)
            }
 
 makeLenses ''State
@@ -36,6 +37,7 @@ emptyState = State
   { _state_nextConnId = ConnId 1
   , _state_conns = mempty
   , _state_nickToConn = mempty
+  , _state_channelToNick = mempty
   }
 
 withConnInState :: IORef State -> Connection -> (ConnId -> IO a) -> IO a
@@ -53,8 +55,20 @@ addNick :: Nick -> ConnId -> State -> State
 addNick n cid = state_nickToConn %~ Map.insertWith Set.union n (Set.singleton cid)
 
 getConnsForNick :: Nick -> State -> [Connection]
-getConnsForNick n s = Map.elems $ Map.intersection (_state_conns s) connIds
-  where connIds = Map.fromSet (const ()) $ Map.findWithDefault Set.empty n $ _state_nickToConn s
+getConnsForNick n s = Map.elems $ Map.intersection (_state_conns s) (Map.fromSet (const ()) connIds)
+  where connIds = Map.findWithDefault Set.empty n $ _state_nickToConn s
+
+getConnsForChannel :: ChannelId -> State -> [Connection]
+getConnsForChannel c s = Map.elems $ Map.intersection (_state_conns s) (Map.fromSet (const ()) connIds)
+  where nicks = Map.findWithDefault Set.empty c $ _state_channelToNick s
+        connIds = Set.unions $ Map.elems $ Map.intersection (_state_nickToConn s) $ Map.fromSet (const ()) nicks
+
+getConnsForDestination :: Destination -> State -> [Connection]
+getConnsForDestination = either getConnsForNick getConnsForChannel
+
+joinChannel :: Nick -> ChannelId -> State -> State
+joinChannel n c = state_channelToNick %~ Map.insertWith Set.union c (Set.singleton n)
+
 
 atomicModifyIORef_' :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_' r f = atomicModifyIORef' r $ \a -> (f a, ())
@@ -69,7 +83,7 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
       Up_Message m -> do
         s <- readIORef sRef
         t <- getCurrentTime
-        forM_ (getConnsForNick (_message_to m) s) $ \receiverConn -> do
+        forM_ (getConnsForDestination (_message_to m) s) $ \receiverConn -> do
           sendTextData receiverConn $ encode $ Down_Message $ Envelope t m
       Up_AddNick n -> atomicModifyIORef_' sRef $ addNick n cid
     return ()

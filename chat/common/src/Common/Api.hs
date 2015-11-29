@@ -10,9 +10,13 @@ newtype ConnId = ConnId { unConnId :: Integer } deriving (Show, Read, Eq, Ord, E
 
 newtype Nick = Nick { unNick :: Text } deriving (Show, Read, Eq, Ord, FromJSON, ToJSON)
 
+newtype ChannelId = ChannelId { unChannelId :: Text } deriving (Show, Read, Eq, Ord, FromJSON, ToJSON)
+
+type Destination = Either Nick ChannelId
+
 data Message
    = Message { _message_from :: Nick
-             , _message_to :: Nick
+             , _message_to :: Destination
              , _message_body :: Text
              }
    deriving (Show, Read, Eq, Ord)

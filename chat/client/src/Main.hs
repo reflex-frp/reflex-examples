@@ -19,7 +19,7 @@ main = mainWidget $ do
   nick <- el "div" nickInput
   rec i <- textInput $ def & setValue .~ ("" <$ send)
       let send = textInputGetEnter i
-  let wsUp = leftmost [ tag (Up_Message . Message (Nick "ryan") (Nick "ryan") . T.pack <$> current (value i)) send
+  let wsUp = leftmost [ tag (Up_Message . Message (Nick "ryan") (Left $ Nick "ryan") . T.pack <$> current (value i)) send
                       , fmapMaybe (fmap Up_AddNick) (updated nick)
                       ]
   ws <- webSocket "ws://localhost:8000/api" $ def

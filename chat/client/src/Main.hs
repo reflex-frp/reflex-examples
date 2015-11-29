@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, RecursiveDo, LambdaCase #-}
+{-# LANGUAGE OverloadedStrings, RecursiveDo, LambdaCase, ScopedTypeVariables #-}
 module Main where
 
 import Common.Api
@@ -27,6 +27,8 @@ main = mainWidget $ do
                      ]
   ws <- webSocket "ws://localhost:8000/api" $ def
     & webSocketConfig_send .~ fmap (fmap (LBS.toStrict . encode)) wsUp
+  let wsDown = fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
+  history $ fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown
   performEvent_ $ liftIO . print <$> _webSocket_recv ws
   return ()
 
@@ -53,3 +55,16 @@ recipientNickInput = do
 validNick :: Text -> Maybe Nick
 validNick t = if T.null (T.strip t) then Nothing else Just $ Nick t
 
+history :: MonadWidget t m => Event t (Envelope Message) -> m ()
+history newMsg = do
+  msgs <- foldDyn (\new old -> reverse $ new : reverse old) [] newMsg
+  _ <- elAttr "ul" ("style" =: "list-style-type: none;") $ simpleList msgs (el "li" . displayMessage)
+  return ()
+
+displayMessage :: MonadWidget t m => Dynamic t (Envelope Message) -> m ()
+displayMessage em = do
+  t <- mapDyn _envelope_time em
+  m <- mapDyn _envelope_contents em
+  elAttr "span" ("style" =: "color: lightgray;") $ dynText =<< mapDyn (\x -> "(" <> show x <> ") ") t
+  elAttr "span" ("style" =: "color: red;") $ dynText =<< mapDyn ((<>": ") . T.unpack . unNick . _message_from) m
+  el "span" $ dynText =<< mapDyn (T.unpack . _message_body) m

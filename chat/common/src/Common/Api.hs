@@ -29,6 +29,7 @@ data Envelope a
 
 data Up
    = Up_AddNick Nick
+   | Up_RemoveNick Nick
    | Up_Message Message
    deriving (Show, Read, Eq, Ord)
 

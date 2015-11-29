@@ -54,6 +54,16 @@ withConnInState sRef c = bracket open close
 addNick :: Nick -> ConnId -> State -> State
 addNick n cid = state_nickToConn %~ Map.insertWith Set.union n (Set.singleton cid)
 
+removeNick :: Nick -> ConnId -> State -> State
+removeNick n cid = state_nickToConn %~ Map.alter deleteCid n
+  where deleteCid mcids = case mcids of
+          Nothing -> Nothing
+          Just cids ->
+            let cids' = Set.delete cid cids
+            in if Set.null cids'
+               then Nothing
+               else Just cids'
+
 getConnsForNick :: Nick -> State -> [Connection]
 getConnsForNick n s = Map.elems $ Map.intersection (_state_conns s) (Map.fromSet (const ()) connIds)
   where connIds = Map.findWithDefault Set.empty n $ _state_nickToConn s
@@ -86,6 +96,7 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
         forM_ (getConnsForDestination (_message_to m) s) $ \receiverConn -> do
           sendTextData receiverConn $ encode $ Down_Message $ Envelope t m
       Up_AddNick n -> atomicModifyIORef_' sRef $ addNick n cid
+      Up_RemoveNick n -> atomicModifyIORef_' sRef $ removeNick n cid
     return ()
 
 handleState :: (MonadSnap m, MonadIO m) => IORef State -> m ()

@@ -22,11 +22,11 @@ main = mainWidget $ do
   rec i <- textInput $ def & setValue .~ ("" <$ send)
       let send = textInputGetEnter i
   let wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ tag (directMessage <$> current nick <*> current recipient <*> current (value i)) send
-                     , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) . updated nick)
+                     , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
                      , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
                      ]
   ws <- webSocket "ws://localhost:8000/api" $ def
-    & webSocketConfig_send .~ fmap ((:[]) . LBS.toStrict . encode) wsUp
+    & webSocketConfig_send .~ fmap (fmap (LBS.toStrict . encode)) wsUp
   performEvent_ $ liftIO . print <$> _webSocket_recv ws
   return ()
 

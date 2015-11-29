@@ -40,10 +40,11 @@ emptyState = State
 
 withConnInState :: IORef State -> Connection -> (ConnId -> IO a) -> IO a
 withConnInState sRef c = bracket open close
-  where open = do
-          atomicModifyIORef' sRef $ \s ->
-            let cid = _state_nextConnId s
-            in (s { _state_nextConnId = succ cid }, cid)
+  where open = atomicModifyIORef' sRef $ \s ->
+          let cid = _state_nextConnId s
+              s' = s & state_nextConnId .~ succ cid
+                     & state_conns %~ Map.insert cid c
+          in (s', cid)
         close cid = atomicModifyIORef_' sRef $
           (state_conns %~ Map.delete cid) .
           (state_nickToConn %~ fmap (Set.filter (/= cid))) --TODO: Create a reverse mapping to make this faster
@@ -76,6 +77,8 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
 handleState :: (MonadSnap m, MonadIO m) => IORef State -> m ()
 handleState sRef = do
   s <- liftIO $ readIORef sRef
+  writeText $ T.pack $ show $ _state_nextConnId s
+  writeText "\n"
   writeText $ T.pack $ show $ Map.keys $ _state_conns s
   writeText "\n"
   writeText $ T.pack $ show $ Map.toList $ _state_nickToConn s

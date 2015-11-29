@@ -17,6 +17,7 @@ import Data.Monoid
 main :: IO ()
 main = mainWidget $ do
   nick <- el "div" nickInput
+  recipient <- el "div" recipientNickInput
   rec i <- textInput $ def & setValue .~ ("" <$ send)
       let send = textInputGetEnter i
   let wsUp = leftmost [ tag (Up_Message . Message (Nick "ryan") (Nick "ryan") . T.pack <$> current (value i)) send
@@ -29,14 +30,20 @@ main = mainWidget $ do
 
 nickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
 nickInput = do
-  nickInput <- textInput def
+  n <- textInput def
   addNick <- button "Add Nick"
-  nick <- holdDyn Nothing $ tag (validNick . T.pack <$> current (value nickInput)) $ leftmost [addNick, textInputGetEnter nickInput]
+  nick <- holdDyn Nothing $ tag (validNick . T.pack <$> current (value n)) $ leftmost [addNick, textInputGetEnter n]
   (nickMsgAttr, nickMsg) <- splitDyn <=< forDyn nick $ \case
     Nothing -> ("style" =: "color: red;", "No nickname set!")
     Just n -> ("style" =: "color: green;", "Hi, " <> (T.unpack $ unNick n) <> "!")
   elDynAttr "small" nickMsgAttr $ dynText nickMsg
   return nick
+
+recipientNickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
+recipientNickInput = do
+  rec recipient <- mapDyn (validNick . T.pack) <=< fmap value $ textInput $ def & attributes .~ validationAttrs
+      validationAttrs <- forDyn recipient $ \r -> if isNothing r then "style" =: "border: 1px red solid;" <> "placeholder" =: "Enter recipient" else mempty
+  return recipient
 
 validNick :: Text -> Maybe Nick
 validNick t = if T.null (T.strip t) then Nothing else Just $ Nick t

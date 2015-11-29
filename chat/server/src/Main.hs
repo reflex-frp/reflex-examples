@@ -53,17 +53,10 @@ withConnInState sRef c = bracket open close
           (state_nickToConn %~ fmap (Set.filter (/= cid))) --TODO: Create a reverse mapping to make this faster
 
 addNick :: Nick -> ConnId -> State -> State
-addNick n cid = state_nickToConn %~ Map.insertWith Set.union n (Set.singleton cid)
+addNick n cid = state_nickToConn %~ insertItem n cid
 
 removeNick :: Nick -> ConnId -> State -> State
-removeNick n cid = state_nickToConn %~ Map.alter deleteCid n
-  where deleteCid mcids = case mcids of
-          Nothing -> Nothing
-          Just cids ->
-            let cids' = Set.delete cid cids
-            in if Set.null cids'
-               then Nothing
-               else Just cids'
+removeNick n cid = state_nickToConn %~ deleteItem n cid
 
 getConnsForNick :: Nick -> State -> [Connection]
 getConnsForNick n s = Map.elems $ Map.intersection (_state_conns s) (Map.fromSet (const ()) connIds)
@@ -77,9 +70,28 @@ getConnsForChannel c s = Map.elems $ Map.intersection (_state_conns s) (Map.from
 getConnsForDestination :: Destination -> State -> [Connection]
 getConnsForDestination = either getConnsForNick getConnsForChannel
 
-joinChannel :: Nick -> ChannelId -> State -> State
-joinChannel n c = state_channelToNick %~ Map.insertWith Set.union c (Set.singleton n)
+joinChannel :: ChannelId -> Nick -> State -> State
+joinChannel c n = state_channelToNick %~ insertItem c n
 
+leaveChannel :: ChannelId -> Nick -> State -> State
+leaveChannel c n = state_channelToNick %~ deleteItem c n
+
+
+insertItem :: (Ord k, Ord v) => k -> v -> Map k (Set v) -> Map k (Set v)
+insertItem k v = Map.alter f k
+  where f mvs = Just $ case mvs of
+          Nothing -> Set.singleton v
+          Just vs -> Set.insert v vs
+
+deleteItem :: (Ord k, Ord v) => k -> v -> Map k (Set v) -> Map k (Set v)
+deleteItem k v = Map.alter f k
+  where f mvs = case mvs of
+          Nothing -> Nothing
+          Just vs ->
+            let vs' = Set.delete v vs
+            in if Set.null vs'
+               then Nothing
+               else Just vs'
 
 atomicModifyIORef_' :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_' r f = atomicModifyIORef' r $ \a -> (f a, ())
@@ -98,6 +110,8 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
           sendTextData receiverConn $ encode $ Down_Message $ Envelope t m
       Up_AddNick n -> atomicModifyIORef_' sRef $ addNick n cid
       Up_RemoveNick n -> atomicModifyIORef_' sRef $ removeNick n cid
+      Up_JoinChannel c n -> atomicModifyIORef_' sRef $ joinChannel c n
+      Up_LeaveChannel c n -> atomicModifyIORef_' sRef $ leaveChannel c n
     return ()
 
 handleState :: (MonadSnap m, MonadIO m) => IORef State -> m ()

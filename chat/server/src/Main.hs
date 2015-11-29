@@ -6,11 +6,13 @@ import Common.Api
 import Control.Lens
 import Control.Exception
 import Control.Monad
+import Control.Monad.IO.Class
 import Control.Concurrent
 import Data.Aeson
 import Data.Aeson.TH
 import Data.IORef
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Time.Clock
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -71,10 +73,19 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
       Up_AddNick n -> atomicModifyIORef_' sRef $ addNick n cid
     return ()
 
+handleState :: (MonadSnap m, MonadIO m) => IORef State -> m ()
+handleState sRef = do
+  s <- liftIO $ readIORef sRef
+  writeText $ T.pack $ show $ Map.keys $ _state_conns s
+  writeText "\n"
+  writeText $ T.pack $ show $ Map.toList $ _state_nickToConn s
+  writeText "\n"
+
 main :: IO ()
 main = do
   sRef <- newIORef emptyState
   quickHttpServe $ route
     [ ("", serveDirectory "static")
     , ("api", handleApi sRef)
+    , ("state", handleState sRef)
     ]

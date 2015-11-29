@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.Monoid
 import Control.Monad.Trans.Maybe
 import GHCJS.DOM.Element
+import Data.Time.Format
 
 main :: IO ()
 main = mainWidgetWithHead headTag $ elAttr "div" flexContainer $ do
@@ -93,6 +94,8 @@ displayMessage :: MonadWidget t m => Dynamic t (Envelope Message) -> m ()
 displayMessage em = do
   t <- mapDyn _envelope_time em
   m <- mapDyn _envelope_contents em
-  elAttr "span" ("style" =: "color: lightgray; font-family: monospace;") $ dynText =<< mapDyn (\x -> "(" <> show x <> ") ") t
+  let timestampFormat = formatTime defaultTimeLocale "%r"
+  elAttr "span" ("style" =: "color: lightgray; font-family: monospace;") $ dynText =<< mapDyn (\x -> "(" <> timestampFormat x <> ") ") t
   elAttr "span" ("style" =: "color: red;") $ dynText =<< mapDyn ((<>": ") . T.unpack . unNick . _message_from) m
   el "span" $ dynText =<< mapDyn (T.unpack . _message_body) m
+

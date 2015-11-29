@@ -11,6 +11,7 @@ import Control.Concurrent
 import Control.Applicative
 import Data.Aeson
 import Data.Aeson.TH
+import Data.Monoid
 import Data.IORef
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -117,12 +118,12 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
 handleState :: (MonadSnap m, MonadIO m) => IORef State -> m ()
 handleState sRef = do
   s <- liftIO $ readIORef sRef
-  writeText $ T.pack $ show $ _state_nextConnId s
-  writeText "\n"
-  writeText $ T.pack $ show $ Map.keys $ _state_conns s
-  writeText "\n"
-  writeText $ T.pack $ show $ Map.toList $ _state_nickToConn s
-  writeText "\n"
+  writeText $ T.unlines
+    [ "Next ConnId: " <> T.pack (show $ _state_nextConnId s)
+    , "Connections: " <> T.pack (show $ Map.keys $ _state_conns s)
+    , "Nick to Connection: " <> T.pack (show $ Map.toList $ _state_nickToConn s)
+    , "ChannelId to Nick: " <> T.pack (show $ Map.toList $ _state_channelToNick s)
+    ]
 
 main :: IO ()
 main = do

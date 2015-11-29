@@ -14,17 +14,37 @@ import Control.Monad
 import Data.Maybe
 import Data.Monoid
 import Control.Monad.Trans.Maybe
+import GHCJS.DOM.Element
 
 main :: IO ()
-main = mainWidget $ do
-  nick <- el "div" nickInput
-  recipient <- el "div" recipientNickInput
-  rec i <- textInput $ def & setValue .~ ("" <$ send)
-      let send = textInputGetEnter i
-  let wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ tag (directMessage <$> current nick <*> current recipient <*> current (value i)) send
-                     , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
-                     , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
-                     ]
+main = mainWidgetWithHead headTag $ elAttr "div" flexContainer $ do
+  (nick, recipient) <- elAttr "div" flexNav $ do
+    n <- el "div" nickInput
+    r <- el "div" recipientNickInput
+    return (n, r)
+  elAttr "div" flexContent $ do
+    rec let send = textInputGetEnter i
+        let wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ tag (directMessage <$> current nick <*> current recipient <*> current (value i)) send
+                           , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
+                           , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
+                           ]
+        wsDown <- openWebSocket wsUp
+        let newMsg = fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown
+        (hEl, _) <- elAttr' "div" historyAttr $ history newMsg
+        scroll <- delay 0.1 newMsg
+        performEvent_ $ fmap (\_ -> let h = _el_element hEl in liftIO $ elementSetScrollTop h =<< elementGetScrollHeight h) scroll
+        i <- textInput $ def & setValue .~ ("" <$ send)
+                             & attributes .~ (constDyn $ "class" =: "form-control")
+    return ()
+  where
+    flexContainer = "style" =: "display: flex;"
+    flexNav = "style" =: "flex: 1 1 20%; order: 1;"
+    flexContent = "style" =: "flex: 1 1 80%; order: 2; display: flex; flex-direction: column; margin-top: auto; overflow: hidden; height: 100vh;"
+    historyAttr = "style" =: "list-style-type: none; overflow: auto; height: calc(100% - 26px);"
+    headTag = elAttr "link" ("rel" =: "stylesheet" <> "href" =: "//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css") $ return ()
+
+openWebSocket :: MonadWidget t m => Event t [Up] -> m (Event t (Maybe Down))
+openWebSocket wsUp = do
   wv <- askWebView
   host <- liftIO $ getLocationHost wv
   protocol <- liftIO $ getLocationProtocol wv
@@ -38,17 +58,14 @@ main = mainWidget $ do
                  _ -> host
   ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def
     & webSocketConfig_send .~ fmap (fmap (LBS.toStrict . encode)) wsUp
-  let wsDown = fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
-  history $ fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown
-  performEvent_ $ liftIO . print <$> _webSocket_recv ws
-  return ()
+  return $ fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
 
 directMessage :: Maybe Nick -> Maybe Nick -> String -> Maybe Message
 directMessage sender recipient msg = Message <$> sender <*> (Left <$> recipient) <*> pure (T.pack msg)
 
 nickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
 nickInput = do
-  n <- textInput def
+  n <- textInput $ def & attributes .~ (constDyn $ "class" =: "form-control")
   addNick <- button "Add Nick"
   nick <- holdDyn Nothing $ tag (validNick . T.pack <$> current (value n)) $ leftmost [addNick, textInputGetEnter n]
   (nickMsgAttr, nickMsg) <- splitDyn <=< forDyn nick $ \case
@@ -60,7 +77,7 @@ nickInput = do
 recipientNickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
 recipientNickInput = do
   rec recipient <- mapDyn (validNick . T.pack) <=< fmap value $ textInput $ def & attributes .~ validationAttrs
-      validationAttrs <- forDyn recipient $ \r -> if isNothing r then "style" =: "border: 1px red solid;" <> "placeholder" =: "Enter recipient" else mempty
+      validationAttrs <- forDyn recipient $ \r -> "class" =: "form-control" <> if isNothing r then "style" =: "border: 1px red solid;" <> "placeholder" =: "Enter recipient" else mempty
   return recipient
 
 validNick :: Text -> Maybe Nick
@@ -69,13 +86,13 @@ validNick t = if T.null (T.strip t) then Nothing else Just $ Nick t
 history :: MonadWidget t m => Event t (Envelope Message) -> m ()
 history newMsg = do
   msgs <- foldDyn (\new old -> reverse $ new : reverse old) [] newMsg
-  _ <- elAttr "ul" ("style" =: "list-style-type: none;") $ simpleList msgs (el "li" . displayMessage)
+  simpleList msgs (el "div" . displayMessage)
   return ()
 
 displayMessage :: MonadWidget t m => Dynamic t (Envelope Message) -> m ()
 displayMessage em = do
   t <- mapDyn _envelope_time em
   m <- mapDyn _envelope_contents em
-  elAttr "span" ("style" =: "color: lightgray;") $ dynText =<< mapDyn (\x -> "(" <> show x <> ") ") t
+  elAttr "span" ("style" =: "color: lightgray; font-family: monospace;") $ dynText =<< mapDyn (\x -> "(" <> show x <> ") ") t
   elAttr "span" ("style" =: "color: red;") $ dynText =<< mapDyn ((<>": ") . T.unpack . unNick . _message_from) m
   el "span" $ dynText =<< mapDyn (T.unpack . _message_body) m

@@ -15,6 +15,6 @@ main = mainWidget $ do
   rec i <- textInput $ def & setValue .~ ("" <$ send)
       let send = textInputGetEnter i
   ws <- webSocket "ws://localhost:8000/api" $ def
-    & webSocketConfig_send .~ tag ((:[]) . LBS.toStrict . encode . Up_Message (Nick "ryan") . T.pack <$> current (value i)) send
+    & webSocketConfig_send .~ tag ((:[]) . LBS.toStrict . encode . Up_Message . Message (Nick "ryan") (Nick "ryan") . T.pack <$> current (value i)) send
   performEvent_ $ liftIO . print <$> _webSocket_recv ws
   return ()

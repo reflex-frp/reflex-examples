@@ -4,20 +4,36 @@ module Common.Api where
 import Data.Aeson
 import Data.Aeson.TH
 import Data.Text (Text)
+import Data.Time.Clock
 
 newtype ConnId = ConnId { unConnId :: Integer } deriving (Show, Read, Eq, Ord, Enum, FromJSON, ToJSON)
 
 newtype Nick = Nick { unNick :: Text } deriving (Show, Read, Eq, Ord, FromJSON, ToJSON)
 
+data Message
+   = Message { _message_from :: Nick
+             , _message_to :: Nick
+             , _message_body :: Text
+             }
+   deriving (Show, Read, Eq, Ord)
+
+data Envelope a
+   = Envelope { _envelope_time :: UTCTime
+              , _envelope_contents :: a
+              }
+   deriving (Show, Read, Eq, Ord)
+
 data Up
-   = Up_AddNick Text
-   | Up_Message Nick Text
+   = Up_AddNick Nick
+   | Up_Message Message
    deriving (Show, Read, Eq, Ord)
 
 data Down
-   = Down_Message Nick Text
+   = Down_Message (Envelope Message)
    | Down_PLACEHOLDER
    deriving (Show, Read, Eq, Ord)
 
 deriveJSON defaultOptions ''Up
 deriveJSON defaultOptions ''Down
+deriveJSON defaultOptions ''Message
+deriveJSON defaultOptions ''Envelope

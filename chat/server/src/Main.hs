@@ -11,6 +11,7 @@ import Data.Aeson
 import Data.Aeson.TH
 import Data.IORef
 import Data.Text (Text)
+import Data.Time.Clock
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Map (Map)
@@ -45,6 +46,16 @@ withConnInState sRef c = bracket open close
             let s' = s & state_conns %~ Map.delete cid
             in (s', ())
 
+addNick :: Nick -> ConnId -> State -> State
+addNick n cid = state_nickToConn %~ Map.insertWith Set.union n (Set.singleton cid)
+
+getConnsForNick :: Nick -> State -> [Connection]
+getConnsForNick n s = Map.elems $ Map.intersection (_state_conns s) connIds
+  where connIds = Map.fromSet (const ()) $ Map.findWithDefault Set.empty n $ _state_nickToConn s
+
+atomicModifyIORef_' :: IORef a -> (a -> a) -> IO ()
+atomicModifyIORef_' r f = atomicModifyIORef' r $ \a -> (f a, ())
+
 handleApi :: MonadSnap m => IORef State -> m ()
 handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
   conn <- acceptRequest pendingConn
@@ -52,7 +63,12 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
     Text upRaw <- receiveDataMessage conn
     Right up <- return $ eitherDecode' upRaw
     case up of
-      Up_Message n m -> sendDataMessage conn $ Text $ encode $ Down_Message n m
+      Up_Message m -> do
+        s <- readIORef sRef
+        t <- getCurrentTime
+        forM_ (getConnsForNick (_message_to m) s) $ \receiverConn -> do
+          sendTextData receiverConn $ encode $ Down_Message $ Envelope t m
+      Up_AddNick n -> atomicModifyIORef_' sRef $ addNick n cid
     return ()
 
 main :: IO ()

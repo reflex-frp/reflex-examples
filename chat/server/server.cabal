@@ -5,13 +5,28 @@ license: BSD3
 author: Ryan Trinkle
 maintainer: ryan.trinkle@gmail.com
 build-type: Simple
-cabal-version: >=1.2
+cabal-version: >=1.8
+
+library
+  hs-source-dirs: src
+  build-depends:
+    base,
+    reflex-examples-chat-common,
+    aeson,
+    containers,
+    lens,
+    snap,
+    snap-core,
+    text,
+    time,
+    transformers,
+    websockets,
+    websockets-snap
+  exposed-modules:
+    Server
 
 executable server
   main-is: src/Main.hs
   build-depends:
     base,
-    snap,
-    websockets-snap,
-    lens,
-    aeson
+    reflex-examples-chat-server

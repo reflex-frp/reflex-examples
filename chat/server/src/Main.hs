@@ -11,6 +11,7 @@ import Control.Concurrent
 import Control.Applicative
 import Data.Aeson
 import Data.Aeson.TH
+import Data.Either
 import Data.Monoid
 import Data.IORef
 import Data.Text (Text)
@@ -107,7 +108,10 @@ handleApi sRef = runWebSocketsSnap $ \pendingConn -> do
       Up_Message m -> do
         s <- readIORef sRef
         t <- getCurrentTime
-        forM_ (getConnsForDestination (_message_to m) s ++ getConnsForNick (_message_from m) s) $ \receiverConn -> do
+        let conns = getConnsForDestination (_message_to m) s ++ if (isLeft $ _message_to m)
+              then getConnsForNick (_message_from m) s
+              else []
+        forM_ conns $ \receiverConn -> do
           sendTextData receiverConn $ encode $ Down_Message $ Envelope t m
       Up_AddNick n -> atomicModifyIORef_' sRef $ addNick n cid
       Up_RemoveNick n -> atomicModifyIORef_' sRef $ removeNick n cid

@@ -17,6 +17,7 @@ library
     containers,
     ghcjs-dom,
     lens,
+    raw-strings-qq,
     reflex-dom,
     text,
     time,

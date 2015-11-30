@@ -1,5 +1,7 @@
 {-# LANGUAGE RecursiveDo #-}
 import Reflex.Dom
+import Reflex.Host.Class
+import Data.Dependent.Sum
 import Data.Monoid
 import Data.Maybe
 import Control.Monad.Trans
@@ -73,13 +75,21 @@ foreign import javascript unsafe "$1[\"readAsDataURL\"]($2)"
 readAsDataURL :: (MonadIO m) => FileReader -> File -> m ()
 readAsDataURL fr f = liftIO (js_readAsDataURL fr f)
 
+
+askPostEvent :: MonadWidget t m => m (EventTrigger t a -> a -> IO ())
+askPostEvent = do
+  postGui <- askPostGui
+  runWithActions <- askRunWithActions
+  return (\t a -> postGui $ runWithActions [t :=> a])
+
+
 buildEvent :: (MonadWidget t m)
-           => ((a -> IO ()) -> WidgetHost m r)
+           => ((a -> IO ()) -> IO (IO ()))
            -> m (Event t a)
-buildEvent install =
-  do pb <- getPostBuild
-     performEventAsync . (<$ pb) $ \k ->
-       install k >> return ()
+buildEvent install = do
+  postEvent <- askPostEvent
+  newEventWithTrigger (install . postEvent)
+
 
 dataURLFileReader :: (MonadWidget t m) => Event t File -> m (Event t String)
 dataURLFileReader request =
@@ -87,6 +97,6 @@ dataURLFileReader request =
      let handler :: (String -> IO ()) -> EventM UIEvent FileReader ()
          handler k = liftIO $ k =<< getResult fileReader
      performEvent_ (fmap (\f -> readAsDataURL fileReader f) request)
-     buildEvent (liftIO . connect "load" fileReader . handler)
+     buildEvent (connect "load" fileReader . handler)
 
 -------------------------------------------------------------------------------

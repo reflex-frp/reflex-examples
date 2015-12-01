@@ -71,10 +71,9 @@ chatSettings
        )
 chatSettings newMsg = divClass "chat-settings" $ do
   n <- el "div" nickInput
-  pb <- getPostBuild
-  let c0 = ChannelId "reflex"
-  rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel (c0 <$ pb) Chat_Channel cSelection
-      cSelection <- holdDyn (Just (Chat_Channel c0)) $ leftmost [cClick, Nothing <$ dmClick]
+  rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel c0 Chat_Channel cSelection
+      let c0 = fmap (const $ ChannelId "reflex") $ fmapMaybe id $ updated n
+      cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick, fmap (Just . Chat_Channel) c0]
       (dm, dms, dmClick) <- chatSettingsGroup "DIRECT MESSAGES" addDirectMessage newDm Chat_DirectMessage dmSelection
       dmSelection <- holdDyn Nothing $ leftmost [dmClick, Nothing <$ cClick]
       chats <- combineDyn Map.union dms cs
@@ -143,7 +142,7 @@ nickInput = do
         iconDyn (constDyn "pencil pull-right fa-fw nav-group-add")
       n <- popup (domEvent Click editNick) never $ \focus ->
         inputGroupWithButton ComponentSize_Small "Set Nick" focus $ text "Set"
-      nick <- holdDyn Nothing $ fmap (validNick . T.pack) $ leftmost [n, startingNick]
+      nick <- holdDyn Nothing $ fmap (validNick . T.pack) $ leftmost [startingNick, n]
   return nick
 
 addDirectMessage :: MonadWidget t m => Event t () -> m (Event t Nick)
@@ -303,7 +302,7 @@ openWebSocket wsUp = do
       websocketReady <- holdDyn False $ fmap (const True) $ _webSocket_open ws
       buffer <- foldDyn (++) [] $ gate (not <$> current websocketReady) wsUp
       let send = fmap (fmap (LBS.toStrict . encode)) $ leftmost [ gate (current websocketReady) wsUp
-                                                                , tagDyn buffer (_webSocket_open ws)
+                                                                , tag (current buffer) (_webSocket_open ws)
                                                                 ]
   return $ fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
 

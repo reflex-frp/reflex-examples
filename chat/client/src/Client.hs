@@ -161,7 +161,7 @@ displayMessage :: MonadWidget t m => Dynamic t (Envelope Message) -> m ()
 displayMessage em = do
   t <- mapDyn _envelope_time em
   m <- mapDyn _envelope_contents em
-  let timestampFormat = formatTime defaultTimeLocale "%r"
+  let timestampFormat = formatTime defaultTimeLocale "%r %Z"
   elClass "span" "message-timestamp" $ dynText =<< mapDyn (\x -> "(" <> timestampFormat x <> ") ") t
   elClass "span" "message-from" $ dynText =<< mapDyn ((<>": ") . T.unpack . unNick . _message_from) m
   elClass "span" "message-body" $ dyn =<< mapDyn (mapM displayMessageElement . messageElements . _message_body) m

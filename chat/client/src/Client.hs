@@ -72,7 +72,7 @@ chatSettings
        )
 chatSettings wsOpen newMsg = divClass "chat-settings" $ do
   n <- el "div" $ nickInput wsOpen
-  let c0 = fmap (const $ ChannelId "reflex") $ fmapMaybe id $ updated n
+  c0 <- headE $ fmap (const $ ChannelId "reflex") $ fmapMaybe id $ updated n
   rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel c0 Chat_Channel cSelection
       cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick]
       (_, dms, dmClick) <- chatSettingsGroup "DIRECT MESSAGES" addDirectMessage newDm Chat_DirectMessage dmSelection
@@ -214,7 +214,7 @@ history msgs visible = do
   performEvent_ $ fmap (\_ -> let h = _el_element hEl in liftIO $ elementSetScrollTop h =<< elementGetScrollHeight h) scroll
   return newMsg
   where
-    historyAttr = "style" =: "overflow: auto; height: calc(100% - 34px);"
+    historyAttr = "class" =: "history"
     hidden = "style" =: "display: none;"
 
 data ComponentSize = ComponentSize_Small
@@ -413,6 +413,10 @@ customCss = [r|
     }
     .online {
       color: #38978D;
+    }
+    .history {
+      overflow: auto;
+      height: calc(100% - 34px);
     }
   |]
   where

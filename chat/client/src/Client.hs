@@ -16,6 +16,7 @@ import Data.Text.Encoding
 import Data.Time.Format
 import GHCJS.DOM.Element
 import Reflex.Dom
+import Text.RawString.QQ
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
 import qualified Data.Text as T
@@ -24,19 +25,21 @@ main :: IO ()
 main = mainWidgetWithHead headTag bodyTag
 
 headTag :: MonadWidget t m => m ()
-headTag = forM_ [ "//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css"
-                , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
-                ] $ \x -> elAttr "link" ("rel" =: "stylesheet" <> "href" =: x) $ return ()
+headTag = do
+  forM_ [ "//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" --TODO Make these links local
+        , "//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
+        ] $ \x -> elAttr "link" ("rel" =: "stylesheet" <> "href" =: x) $ return ()
+  el "style" $ text customCss
 
 bodyTag :: MonadWidget t m => m ()
-bodyTag = elAttr "div" flexContainer $ do
-  rec (nick, newChannel, chats, chat) <- elAttr "div" flexNav $ chatSettings newDm
-      newDm <- elAttr "div" flexContent $ do
+bodyTag = divClass "flex-container" $ do
+  rec (nick, newChannel, chats, chat) <- divClass "flex-nav" $ chatSettings newDm
+      newDm <- divClass "flex-content" $ do
         rec let wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ attachWith ($) (message <$> current nick <*> current chat) send
                                , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
                                , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
+                               , attachWith (\(oldn, cs) n -> catMaybes $ concatMap (\c -> [Up_LeaveChannel <$> pure c <*> oldn, Up_JoinChannel <$> pure c <*> n]) $ rights $ map chatDestination $ Map.elems cs) ((,) <$> current nick <*> current chats) (updated nick)
                                , attachWithMaybe (\n c -> fmap ((:[]) . Up_JoinChannel c) n) (current nick) newChannel
-                               -- TODO Rejoin channels when nick changes
                                -- TODO Remove channel subscriptions when nick changes
                                ]
             wsDown <- openWebSocket wsUp
@@ -49,10 +52,6 @@ bodyTag = elAttr "div" flexContainer $ do
             send <- inputGroupWithButton ComponentSize_Medium "Enter message..." $ icon "paper-plane-o"
         return newDm
   return ()
-  where
-    flexContainer = "style" =: "display: flex;"
-    flexNav = "style" =: "flex: 1 1 20%; order: 1;"
-    flexContent = "style" =: "flex: 1 1 80%; order: 2; display: flex; flex-direction: column; margin-top: auto; overflow: hidden; height: 100vh;"
 
 data Chat = Chat_DirectMessage Nick
           | Chat_Channel ChannelId
@@ -68,20 +67,26 @@ chatSettings
        )
 chatSettings newDm = do
   n <- el "div" nickInput
-  rec dm <- el "div" addDirectMessage
-      dms <- foldDyn (\x -> Map.insert (Just $ Chat_DirectMessage x) (Chat_DirectMessage x)) Map.empty $ leftmost [dm, fmap (_message_from . _envelope_contents) newDm]
-      dmClick <- listGroup dms dmSelection showChatName
-      dmSelection <- holdDyn Nothing $ leftmost [dmClick, Nothing <$ cClick]
-      c <- el "div" addChannel
+  rec c <- el "div" addChannel
       cs <- foldDyn (\x -> Map.insert (Just $ Chat_Channel x) (Chat_Channel x)) Map.empty c
-      cClick <- listGroup cs cSelection showChatName
+      cClick <- listGroup cs cSelection chatListItem
       cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick]
+      dm <- el "div" addDirectMessage
+      dms <- foldDyn (\x -> Map.insert (Just $ Chat_DirectMessage x) (Chat_DirectMessage x)) Map.empty $ leftmost [dm, fmap (_message_from . _envelope_contents) newDm]
+      dmClick <- listGroup dms dmSelection chatListItem
+      dmSelection <- holdDyn Nothing $ leftmost [dmClick, Nothing <$ cClick]
       chats <- combineDyn Map.union dms cs
       chat <- combineDyn (\r c -> case (r, c) of
         (Just r', _) -> r
         (_, Just c') -> c
         _ -> Nothing) dmSelection cSelection
   return (n, c, chats, chat)
+
+chatListItem :: MonadWidget t m => Dynamic t Chat -> m ()
+chatListItem c = do
+  iconDyn =<< mapDyn (\c' -> if isLeft (chatDestination c') then "circle fa-fw fa-sm" else "hashtag fa-fw fa-sm") c
+  text " "
+  dynText =<< mapDyn showChatName c
 
 dmIsNew :: Maybe Nick -> Map (Maybe Chat) Chat -> Envelope Message -> Bool
 dmIsNew n cs m =
@@ -164,7 +169,12 @@ buttonSize c = case c of
   ComponentSize_Large -> "btn-lg"
  
 icon :: MonadWidget t m => String -> m ()
-icon x = elClass "i" ("fa fa-" <> x) $ return ()
+icon = iconDyn . constDyn
+
+iconDyn :: MonadWidget t m => Dynamic t String -> m ()
+iconDyn k = do
+  i <- mapDyn (\x -> "class" =: ("fa fa-" <> x)) k
+  elDynAttr "i" i $ return ()
 
 buttonClass :: MonadWidget t m => String -> m a -> m (Event t ())
 buttonClass klass child = liftM (domEvent Click . fst) $ elAttr' "button" ("type" =: "button" <> "class" =: klass) child
@@ -181,10 +191,10 @@ inputGroupWithButton sz placeholder buttonChild = do
 validateNonBlank :: Text -> Maybe Text
 validateNonBlank t = if T.null (T.strip t) then Nothing else Just t
 
-listGroup :: (Ord k, MonadWidget t m) => Dynamic t (Map k v) -> Dynamic t k -> (v -> String) -> m (Event t k)
-listGroup as selection toString = divClass "list-group" $ selectViewListWithKey_ selection as $ \_ v s -> do
+listGroup :: (Ord k, MonadWidget t m) => Dynamic t (Map k v) -> Dynamic t k -> (Dynamic t v -> m ()) -> m (Event t k)
+listGroup as selection child = divClass "list-group" $ selectViewListWithKey_ selection as $ \_ v s -> do
   style <- forDyn s $ \active -> "style" =: "cursor: pointer;" <> "class" =: ("list-group-item" <> if active then " active" else "")
-  liftM (domEvent Click . fst) $ elDynAttr' "a" style $ dynText =<< mapDyn toString v
+  liftM (domEvent Click . fst) $ elDynAttr' "a" style $ child v --dynText =<< mapDyn toString v
 
 openWebSocket :: MonadWidget t m => Event t [Up] -> m (Event t (Maybe Down))
 openWebSocket wsUp = do
@@ -202,3 +212,73 @@ openWebSocket wsUp = do
   ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def
     & webSocketConfig_send .~ fmap (fmap (LBS.toStrict . encode)) wsUp
   return $ fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
+
+customCss :: String
+customCss = [r|
+    .list-group-item {
+      background-color: #4D394B;
+      border: none;
+    }
+    a.list-group-item {
+      color: #ab9ba9;
+    }
+    a.list-group-item:hover {
+      background-color: #3E313C;
+      border: none;
+      color: #ab9ba9;
+    }
+    .list-group-item.active {
+      background-color: #4C9689;
+      border-color: #4C9689;
+    }
+    .list-group-item.active:hover {
+      background-color: #4C9689;
+      border-color: #4C9689;
+    }
+    .fa-sm {
+      font-size: 75%;
+    }
+    .flex-container {
+      |] <> displayFlex <> [r|
+    }
+    .flex-nav { |] <>
+      flex 1 1 "20%" <>
+      order 1 <> [r|
+      background-color: #4D394B;
+    }
+    .flex-content { |] <>
+      displayFlex <>
+      flex 1 1 "80%" <>
+      order 2 <> [r|
+      flex-direction: column;
+      -webkit-flex-direction: column;
+      margin-top: auto;
+      overflow: hidden;
+      height: 100vh;
+    }
+  |]
+  where
+    displayFlex = [r|
+      display: -webkit-box;
+      display: -moz-box;
+      display: -ms-flexbox;
+      display: -webkit-flex;
+      display: flex;
+    |]
+    wrap v k = k <> ":" <> v <> ";"
+    flex grow shrink basis =
+      let gsb = show grow <> " " <> show shrink <> " " <> basis
+      in unlines $ map (wrap gsb) [ "-webkit-box-flex"
+                                  , "-moz-box-flex"
+                                  , "-webkit-flex"
+                                  , "-ms-flex"
+                                  , "flex"
+                                  ]
+    order ix = unlines $ map (wrap (show ix)) [ "-webkit-box-ordinal-group"
+                                              , "-moz-box-ordinal-group"
+                                              , "-ms-flex-order"
+                                              , "-webkit-order"
+                                              , "order"
+                                              ]
+
+

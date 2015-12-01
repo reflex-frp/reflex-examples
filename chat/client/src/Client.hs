@@ -60,10 +60,10 @@ data Chat = Chat_DirectMessage Nick
 chatSettings
   :: MonadWidget t m
   => Event t (Envelope Message) -- ^ New DM
-  -> m ( Dynamic t (Maybe Nick) -- ^ Current Nick
-       , Event t ChannelId -- ^ New Channel event
-       , Dynamic t (Map (Maybe Chat) Chat) -- ^ Connected Chats
-       , Dynamic t (Maybe Chat) -- ^ Currently selected Chat
+  -> m ( Dynamic t (Maybe Nick) -- Current Nick
+       , Event t ChannelId -- New Channel event
+       , Dynamic t (Map (Maybe Chat) Chat) -- Connected Chats
+       , Dynamic t (Maybe Chat) -- Currently selected Chat
        )
 chatSettings newDm = do
   n <- el "div" nickInput
@@ -235,8 +235,8 @@ listGroup as selection child = divClass "list-group" $ selectViewListWithKey_ se
 openWebSocket :: MonadWidget t m => Event t [Up] -> m (Event t (Maybe Down))
 openWebSocket wsUp = do
   wv <- askWebView
-  host <- liftIO $ getLocationHost wv
-  protocol <- liftIO $ getLocationProtocol wv
+  host <- getLocationHost wv
+  protocol <- getLocationProtocol wv
   let wsProtocol = case protocol of
                      "file:" -> "ws:"
                      "http:" -> "ws:"

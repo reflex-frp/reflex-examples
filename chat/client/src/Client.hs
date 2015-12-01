@@ -95,18 +95,14 @@ chatSettings newMsg = divClass "chat-settings" $ do
       display =<< mapDyn Map.size xs
       text ")"
       add <- liftM (domEvent Click) $ iconDyn (constDyn "plus-circle pull-right fa-fw nav-group-add")
-      rec newItem <- liftM (switch . current) $ widgetHold (return never) $
-            leftmost [ fmap (\_ -> popup child) add
-                     , fmap (\_ -> return never) newItem
-                     -- TODO close with escape button
-                     ]
-      return $ fmapMaybe id newItem
+      popup add never child
 
 chatListItem :: MonadWidget t m => Dynamic t Chat -> Dynamic t Int -> m ()
 chatListItem c n = do
   iconDyn =<< mapDyn (\c' -> if isLeft (chatDestination c') then "circle fa-fw fa-sm" else "hashtag fa-fw fa-sm") c
   text " "
-  dynText =<< mapDyn showChatName c
+  boldName <- mapDyn (\num -> if num > 0 then "style" =: "font-weight: bold;" else mempty) n
+  elDynAttr "span" boldName $ dynText =<< mapDyn showChatName c
   dyn =<< mapDyn (\num -> if num > 0 then elClass "span" "badge" (text $ show num) else return ()) n
   return ()
 
@@ -139,12 +135,13 @@ nickInput = do
   pb <- getPostBuild
   anonNumber <- performEventAsync $ fmap (\_ cb -> liftIO $ cb =<< getStdRandom (randomR (1::Integer, 1000000))) pb
   let startingNick = fmap (("anon-"<>) . show) anonNumber
-  n <- inputGroupWithButton ComponentSize_Small "Set Nick" never $ text "Set"
-  nick <- holdDyn Nothing $ fmap (validNick . T.pack) $ leftmost [n, startingNick]
-  (nickMsgAttr, nickMsg) <- splitDyn <=< forDyn nick $ \case
-    Nothing -> ("style" =: "color: red;", "No nickname set!")
-    Just n -> ("style" =: "color: green;", "Hi, " <> (T.unpack $ unNick n) <> "!")
-  elDynAttr "small" nickMsgAttr $ dynText nickMsg
+  rec editNick <- elClass "h4" "profile" $ do
+        iconDyn =<< mapDyn (\n -> if isNothing n then "circle-o offline" else "circle online") nick
+        dynText =<< mapDyn (maybe "" $ (" "<>) . T.unpack . unNick) nick
+        iconDyn (constDyn "pencil pull-right fa-fw nav-group-add")
+      n <- popup (domEvent Click editNick) never $ \focus ->
+        inputGroupWithButton ComponentSize_Small "Set Nick" focus $ text "Set"
+      nick <- holdDyn Nothing $ fmap (validNick . T.pack) $ leftmost [n, startingNick]
   return nick
 
 addDirectMessage :: MonadWidget t m => Event t () -> m (Event t Nick)
@@ -265,14 +262,22 @@ listGroup as selection msg child = divClass "list-group" $ selectViewListWithKey
                                 ]
   liftM (domEvent Click . fst) $ elDynAttr' "a" style $ child v n
 
-popup :: MonadWidget t m => (Event t () -> m (Event t a)) -> m (Event t (Maybe a))
-popup child = do
-  elAttr "div" ("style" =: "position: relative;") $ divClass "dropdown-menu nav-group-popup" $ do
-    close <- liftM (domEvent Click . fst) $ elAttr' "span" ("class" =: "fa-stack popup-close") $ do
-      icon "circle fa-stack-1x popup-close-bg"
-      icon "times-circle fa-stack-1x popup-close-fg"
-    c <- child =<< getPostBuild
-    return $ leftmost [fmap Just c, Nothing <$ close]
+popup :: MonadWidget t m => Event t () -> Event t () -> (Event t () -> m (Event t a)) -> m (Event t a)
+popup open close child = do
+  rec newItem <- liftM (switch . current) $ widgetHold (return never) $
+        leftmost [ fmap (\_ -> p) open
+                 , fmap (\_ -> return never) newItem
+                 -- TODO close with escape button
+                 ]
+  return $ fmapMaybe id newItem
+  where
+    p = elAttr "div" ("style" =: "position: relative;") $ divClass "dropdown-menu nav-group-popup" $ do
+      closeBtn <- liftM (domEvent Click . fst) $ elAttr' "span" ("class" =: "fa-stack popup-close") $ do
+        icon "circle fa-stack-1x popup-close-bg"
+        icon "times-circle fa-stack-1x popup-close-fg"
+      c <- child =<< getPostBuild
+      return $ leftmost [fmap Just c, Nothing <$ close, Nothing <$ closeBtn]
+
 
 openWebSocket :: MonadWidget t m => Event t [Up] -> m (Event t (Maybe Down))
 openWebSocket wsUp = do
@@ -367,6 +372,7 @@ customCss = [r|
       font-weight: bold;
     }
     .nav-group-add {
+      color: #ab9ba9;
       padding-right: 20px;
       cursor: pointer;
     }
@@ -393,6 +399,18 @@ customCss = [r|
     .badge {
       background-color: #EB4D5C;
       color: white;
+    }
+    .profile {
+      color: white;
+      padding-top: 10px;
+      padding-left: 15px;
+      padding-bottom: 10px;
+    }
+    .offline {
+      color: #ab9ba9;
+    }
+    .online {
+      color: #38978D;
     }
   |]
   where

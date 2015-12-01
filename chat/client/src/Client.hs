@@ -35,21 +35,25 @@ bodyTag :: MonadWidget t m => m ()
 bodyTag = divClass "flex-container" $ do
   rec (nick, newChannel, chats, chat) <- divClass "flex-nav" $ chatSettings newDm
       newDm <- divClass "flex-content" $ do
-        rec let wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ attachWith ($) (message <$> current nick <*> current chat) send
+        rec let channels = rights . map chatDestination . Map.elems
+                wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ attachWith (\n (c, m) -> message n c m) (current nick) send
                                , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
                                , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
-                               , attachWith (\(oldn, cs) n -> catMaybes $ concatMap (\c -> [Up_LeaveChannel <$> pure c <*> oldn, Up_JoinChannel <$> pure c <*> n]) $ rights $ map chatDestination $ Map.elems cs) ((,) <$> current nick <*> current chats) (updated nick)
                                , attachWithMaybe (\n c -> fmap ((:[]) . Up_JoinChannel c) n) (current nick) newChannel
-                               -- TODO Remove channel subscriptions when nick changes
+                               , attachWith (\cs n -> catMaybes $ map (\c -> Up_JoinChannel <$> pure c <*> n) $ channels cs) (current chats) (updated nick)
+                               -- ^ Rejoin Channels with new Nick when Nick changes
+                               , tag ((\cs n -> catMaybes $ map (\c -> Up_LeaveChannel <$> pure c <*> n) $ channels cs) <$> current chats <*> current nick) (updated nick)
+                               -- ^ Leave Channels with old Nick when Nick changes
                                ]
             wsDown <- openWebSocket wsUp
             let newMsg = fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown
                 newDm = attachWithMaybe (\isNew m -> if isNew m then Just m else Nothing) (dmIsNew <$> current nick <*> current chats) newMsg
             messages <- foldDyn (\n ms -> reverse $ n : reverse ms) [] newMsg
-            listWithKey chats $ \k c -> do
+            sendMsgs <- listWithKey chats $ \k c -> do
               relevantMessages <- mapDyn (filter (\m -> Just True == (relevantMessage <$> k <*> pure m))) messages
-              history relevantMessages =<< mapDyn (== k) chat
-            send <- inputGroupWithButton ComponentSize_Medium "Enter message..." $ icon "paper-plane-o"
+              msg <- history relevantMessages =<< mapDyn (== k) chat
+              return $ fmap ((,) k) msg
+            send <- liftM (switch . current) $ mapDyn (leftmost . Map.elems) sendMsgs
         return newDm
   return ()
 
@@ -180,14 +184,17 @@ displayMessageElement me = case me of
     Just i -> icon i
     Nothing -> text $ T.unpack t
 
-history :: MonadWidget t m => Dynamic t [Envelope Message] -> Dynamic t Bool -> m ()
+history :: MonadWidget t m => Dynamic t [Envelope Message] -> Dynamic t Bool -> m (Event t String)
 history msgs visible = do
-  showHide <- mapDyn (\v -> if v then historyAttr else "style" =: "display: none;") visible
-  (hEl, _) <- elDynAttr' "div" showHide $ simpleList msgs (el "div" . displayMessage)
+  (showMsgs, showInput) <- splitDyn =<< mapDyn (\v -> if v then (historyAttr, mempty) else (hidden, hidden)) visible
+  (hEl, _) <- elDynAttr' "div" showMsgs $ simpleList msgs (el "div" . displayMessage)
+  newMsg <- elDynAttr "div" showInput $ inputGroupWithButton ComponentSize_Medium "Enter message..." $ icon "paper-plane-o"
   scroll <- delay 0.1 (updated msgs)
   performEvent_ $ fmap (\_ -> let h = _el_element hEl in liftIO $ elementSetScrollTop h =<< elementGetScrollHeight h) scroll
+  return newMsg
   where
     historyAttr = "style" =: "overflow: auto; height: calc(100% - 34px);"
+    hidden = "style" =: "display: none;"
 
 data ComponentSize = ComponentSize_Small
                    | ComponentSize_Medium

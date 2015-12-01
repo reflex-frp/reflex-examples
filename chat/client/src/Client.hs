@@ -135,8 +135,7 @@ nickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
 nickInput = do
   pb <- getPostBuild
   anonNumber <- performEventAsync $ fmap (\_ cb -> liftIO $ cb =<< getStdRandom (randomR (1::Integer, 1000000))) pb
-  startingNick <- delay 1 $ fmap (("anon-"<>) . show) anonNumber
-  -- ^ TODO: Need to make sure websockets connection is open or this request gets sent too early
+  let startingNick = fmap (("anon-"<>) . show) anonNumber
   n <- inputGroupWithButton ComponentSize_Small "Set Nick" never $ text "Set"
   nick <- holdDyn Nothing $ fmap (validNick . T.pack) $ leftmost [n, startingNick]
   (nickMsgAttr, nickMsg) <- splitDyn <=< forDyn nick $ \case
@@ -286,8 +285,13 @@ openWebSocket wsUp = do
         "about:" -> "localhost:8000" -- We're in GHC
         "file:" -> "localhost:8000"
         _ -> host
-  ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def
-    & webSocketConfig_send .~ fmap (fmap (LBS.toStrict . encode)) wsUp
+  rec ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def
+        & webSocketConfig_send .~ send
+      websocketReady <- holdDyn False $ fmap (const True) $ _webSocket_open ws
+      buffer <- foldDyn (++) [] $ gate (not <$> current websocketReady) wsUp
+      let send = fmap (fmap (LBS.toStrict . encode)) $ leftmost [ gate (current websocketReady) wsUp
+                                                                , tagDyn buffer (_webSocket_open ws)
+                                                                ]
   return $ fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
 
 customCss :: String

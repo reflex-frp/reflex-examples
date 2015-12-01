@@ -16,6 +16,7 @@ import Data.Text.Encoding
 import Data.Time.Format
 import GHCJS.DOM.Element
 import Reflex.Dom
+import System.Random
 import Text.RawString.QQ
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map as Map
@@ -96,6 +97,7 @@ chatSettings newDm = divClass "chat-settings" $ do
       rec newItem <- liftM (switch . current) $ widgetHold (return never) $
             leftmost [ fmap (\_ -> popup child) add
                      , fmap (\_ -> return never) newItem
+                     -- TODO close with escape button
                      ]
       return $ fmapMaybe id newItem
 
@@ -131,8 +133,12 @@ message sender chat msg = Message <$> sender <*> (chatDestination <$> chat) <*> 
 
 nickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
 nickInput = do
+  pb <- getPostBuild
+  anonNumber <- performEventAsync $ fmap (\_ cb -> liftIO $ cb =<< getStdRandom (randomR (1::Integer, 1000000))) pb
+  startingNick <- delay 1 $ fmap (("anon-"<>) . show) anonNumber
+  -- ^ TODO: Need to make sure websockets connection is open or this request gets sent too early
   n <- inputGroupWithButton ComponentSize_Small "Set Nick" never $ text "Set"
-  nick <- holdDyn Nothing $ fmap (validNick . T.pack) n
+  nick <- holdDyn Nothing $ fmap (validNick . T.pack) $ leftmost [n, startingNick]
   (nickMsgAttr, nickMsg) <- splitDyn <=< forDyn nick $ \case
     Nothing -> ("style" =: "color: red;", "No nickname set!")
     Just n -> ("style" =: "color: green;", "Hi, " <> (T.unpack $ unNick n) <> "!")
@@ -252,7 +258,7 @@ validateNonBlank t = if T.null (T.strip t) then Nothing else Just t
 listGroup :: (Ord k, MonadWidget t m) => Dynamic t (Map k v) -> Dynamic t k -> (Dynamic t v -> m ()) -> m (Event t k)
 listGroup as selection child = divClass "list-group" $ selectViewListWithKey_ selection as $ \_ v s -> do
   style <- forDyn s $ \active -> "style" =: "cursor: pointer;" <> "class" =: ("list-group-item" <> if active then " active" else "")
-  liftM (domEvent Click . fst) $ elDynAttr' "a" style $ child v --dynText =<< mapDyn toString v
+  liftM (domEvent Click . fst) $ elDynAttr' "a" style $ child v
 
 popup :: MonadWidget t m => (Event t () -> m (Event t a)) -> m (Event t (Maybe a))
 popup child = do

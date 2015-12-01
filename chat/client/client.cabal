@@ -17,6 +17,7 @@ library
     containers,
     ghcjs-dom,
     lens,
+    random,
     raw-strings-qq,
     reflex-dom,
     text,

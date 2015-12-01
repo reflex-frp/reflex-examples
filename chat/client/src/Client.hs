@@ -118,7 +118,7 @@ message sender chat msg = Message <$> sender <*> (chatDestination <$> chat) <*> 
 
 nickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
 nickInput = do
-  n <- inputGroupWithButton ComponentSize_Small "Set Nick" $ text "Set"
+  n <- inputGroupWithButton ComponentSize_Small "Set Nick" never $ text "Set"
   nick <- holdDyn Nothing $ fmap (validNick . T.pack) n
   (nickMsgAttr, nickMsg) <- splitDyn <=< forDyn nick $ \case
     Nothing -> ("style" =: "color: red;", "No nickname set!")
@@ -128,12 +128,12 @@ nickInput = do
 
 addDirectMessage :: MonadWidget t m => m (Event t Nick)
 addDirectMessage = do
-  addDM <- inputGroupWithButton ComponentSize_Small "Add DM" $ icon "plus"
+  addDM <- inputGroupWithButton ComponentSize_Small "Add DM" never $ icon "plus"
   return $ fmapMaybe (validNick . T.pack) addDM
 
 addChannel :: MonadWidget t m => m (Event t ChannelId)
 addChannel = do
-  addC <- inputGroupWithButton ComponentSize_Small "Add Channel" $ icon "plus"
+  addC <- inputGroupWithButton ComponentSize_Small "Add Channel" never $ icon "plus"
   return $ fmapMaybe (fmap ChannelId . validateNonBlank . T.pack) addC
 
 validNick :: Text -> Maybe Nick
@@ -188,7 +188,8 @@ history :: MonadWidget t m => Dynamic t [Envelope Message] -> Dynamic t Bool -> 
 history msgs visible = do
   (showMsgs, showInput) <- splitDyn =<< mapDyn (\v -> if v then (historyAttr, mempty) else (hidden, hidden)) visible
   (hEl, _) <- elDynAttr' "div" showMsgs $ simpleList msgs (el "div" . displayMessage)
-  newMsg <- elDynAttr "div" showInput $ inputGroupWithButton ComponentSize_Medium "Enter message..." $ icon "paper-plane-o"
+  focus <- delay 0.1 $ fmap (const ()) $ ffilter id $ updated visible
+  newMsg <- elDynAttr "div" showInput $ inputGroupWithButton ComponentSize_Medium "Enter message..." focus $ icon "paper-plane-o"
   scroll <- delay 0.1 (updated msgs)
   performEvent_ $ fmap (\_ -> let h = _el_element hEl in liftIO $ elementSetScrollTop h =<< elementGetScrollHeight h) scroll
   return newMsg
@@ -222,13 +223,14 @@ iconDyn k = do
 buttonClass :: MonadWidget t m => String -> m a -> m (Event t ())
 buttonClass klass child = liftM (domEvent Click . fst) $ elAttr' "button" ("type" =: "button" <> "class" =: klass) child
 
-inputGroupWithButton :: MonadWidget t m => ComponentSize -> String -> m () -> m (Event t String)
-inputGroupWithButton sz placeholder buttonChild = do
+inputGroupWithButton :: MonadWidget t m => ComponentSize -> String -> Event t () -> m () -> m (Event t String)
+inputGroupWithButton sz placeholder focus buttonChild = do
   divClass "input-group" $ do
     rec t <- textInput $ def & attributes .~ (constDyn $ "class" =: ("form-control " <> inputSize sz) <> "placeholder" =: placeholder)
                              & setValue .~ ("" <$ submit)
         b <- elClass "span" "input-group-btn" $ buttonClass ("btn btn-default " <> buttonSize sz) buttonChild
         let submit = tag (current (value t)) $ leftmost [textInputGetEnter t, b]
+    performEvent_ $ fmap (\_ -> liftIO $ elementFocus $ _textInput_element t) focus
     return submit
 
 validateNonBlank :: Text -> Maybe Text
@@ -245,13 +247,13 @@ openWebSocket wsUp = do
   host <- getLocationHost wv
   protocol <- getLocationProtocol wv
   let wsProtocol = case protocol of
-                     "file:" -> "ws:"
-                     "http:" -> "ws:"
-                     "https:" -> "wss:"
-                     _ -> error "Unrecognized protocol: " <> protocol
+        "file:" -> "ws:"
+        "http:" -> "ws:"
+        "https:" -> "wss:"
+        _ -> error "Unrecognized protocol: " <> protocol
       wsHost = case protocol of
-                 "file:" -> "localhost:8000"
-                 _ -> host
+        "file:" -> "localhost:8000"
+        _ -> host
   ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def
     & webSocketConfig_send .~ fmap (fmap (LBS.toStrict . encode)) wsUp
   return $ fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws

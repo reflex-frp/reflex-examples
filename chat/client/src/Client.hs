@@ -142,7 +142,43 @@ displayMessage em = do
   let timestampFormat = formatTime defaultTimeLocale "%r"
   elAttr "span" ("style" =: "color: lightgray; font-family: monospace;") $ dynText =<< mapDyn (\x -> "(" <> timestampFormat x <> ") ") t
   elAttr "span" ("style" =: "color: red;") $ dynText =<< mapDyn ((<>": ") . T.unpack . unNick . _message_from) m
-  el "span" $ dynText =<< mapDyn (T.unpack . _message_body) m
+  el "span" $ dyn =<< mapDyn (mapM displayMessageElement . messageElements . _message_body) m
+  return ()
+
+data MessageElement = MessageElement_Text Text
+                    | MessageElement_Icon Text
+                    deriving (Show, Read, Eq, Ord)
+
+emoticons :: Map Text String
+emoticons = Map.fromList [ (":)", "smile-o")
+                         , (":(", "frown-o")
+                         , (":|", "meh-o")
+                         , ("<3", "heart")
+                         ]
+
+messageElements :: Text -> [MessageElement]
+messageElements t = foldl findEmoticon' [MessageElement_Text t] (Map.keys emoticons)
+  where
+    findEmoticon' :: [MessageElement] -> Text -> [MessageElement]
+    findEmoticon' ms e = case ms of
+      [] -> []
+      (x:xs) -> case x of
+        MessageElement_Text t' -> findEmoticon e t' ++ findEmoticon' xs e
+        _ -> x : findEmoticon' xs e
+    findEmoticon e m = case T.breakOn e m of
+      ("", "") -> []
+      (_, "") -> [MessageElement_Text m]
+      (pre, xs) -> let (match, post) = T.splitAt (T.length e) xs
+                   in if T.null pre
+                         then MessageElement_Icon match : findEmoticon e post
+                         else MessageElement_Text pre : MessageElement_Icon match : findEmoticon e post
+
+displayMessageElement :: MonadWidget t m => MessageElement -> m ()
+displayMessageElement me = case me of
+  MessageElement_Text t -> text $ T.unpack t
+  MessageElement_Icon t -> case Map.lookup t emoticons of
+    Just i -> icon i
+    Nothing -> text $ T.unpack t
 
 history :: MonadWidget t m => Dynamic t [Envelope Message] -> Dynamic t Bool -> m ()
 history msgs visible = do

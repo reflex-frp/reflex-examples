@@ -71,8 +71,10 @@ chatSettings
        )
 chatSettings newMsg = divClass "chat-settings" $ do
   n <- el "div" nickInput
-  rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel never Chat_Channel cSelection
-      cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick]
+  pb <- getPostBuild
+  let c0 = ChannelId "reflex"
+  rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel (c0 <$ pb) Chat_Channel cSelection
+      cSelection <- holdDyn (Just (Chat_Channel c0)) $ leftmost [cClick, Nothing <$ dmClick]
       (dm, dms, dmClick) <- chatSettingsGroup "DIRECT MESSAGES" addDirectMessage newDm Chat_DirectMessage dmSelection
       dmSelection <- holdDyn Nothing $ leftmost [dmClick, Nothing <$ cClick]
       chats <- combineDyn Map.union dms cs

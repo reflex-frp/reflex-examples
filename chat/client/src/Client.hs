@@ -48,14 +48,13 @@ bodyTag = divClass "flex-container" $ do
                                ]
             wsDown <- openWebSocket wsUp
             let newMsg = fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown
-                newDm = attachWithMaybe (\isNew m -> if isNew m then Just (_message_from $ _envelope_contents m) else Nothing) (dmIsNew <$> current nick <*> current chats) newMsg
             messages <- foldDyn (\n ms -> reverse $ n : reverse ms) [] newMsg
             sendMsgs <- listWithKey chats $ \k c -> do
               relevantMessages <- mapDyn (filter (\m -> Just True == (relevantMessage <$> k <*> pure m))) messages
               msg <- history relevantMessages =<< mapDyn (== k) chat
               return $ fmap ((,) k) msg
             send <- liftM (switch . current) $ mapDyn (leftmost . Map.elems) sendMsgs
-        return newDm
+        return newMsg
   return ()
 
 data Chat = Chat_DirectMessage Nick
@@ -64,13 +63,13 @@ data Chat = Chat_DirectMessage Nick
 
 chatSettings
   :: MonadWidget t m
-  => Event t Nick -- ^ New DM
+  => Event t (Envelope Message) -- ^ New Message
   -> m ( Dynamic t (Maybe Nick) -- Current Nick
        , Event t ChannelId -- New Channel event
        , Dynamic t (Map (Maybe Chat) Chat) -- Connected Chats
        , Dynamic t (Maybe Chat) -- Currently selected Chat
        )
-chatSettings newDm = divClass "chat-settings" $ do
+chatSettings newMsg = divClass "chat-settings" $ do
   n <- el "div" nickInput
   rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel never Chat_Channel cSelection
       cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick]
@@ -81,12 +80,14 @@ chatSettings newDm = divClass "chat-settings" $ do
         (Just r', _) -> r
         (_, Just c') -> c
         _ -> Nothing) dmSelection cSelection
+      let newDm = attachWithMaybe (\isNew m -> if isNew m then Just (_message_from $ _envelope_contents m) else Nothing) (dmIsNew <$> current n <*> current chats) newMsg
   return (n, c, chats, chat)
   where
     chatSettingsGroup heading addItem newItem tyCon sel = do
       rec item <- chatSettingsHeading heading items addItem
           items <- foldDyn (\x -> Map.insert (Just $ tyCon x) (tyCon x)) Map.empty $ leftmost [item, newItem]
-          click <- listGroup items sel chatListItem
+          let msg = \k -> fmap (const ()) $ ffilter (\m -> Just True == (relevantMessage <$> k <*> pure m)) newMsg
+          click <- listGroup items sel msg chatListItem
       return (item, items, click)
     chatSettingsHeading label xs child = divClass "nav-group-heading" $ do
       elClass "span" "nav-group-heading-label" $ text label
@@ -101,11 +102,13 @@ chatSettings newDm = divClass "chat-settings" $ do
                      ]
       return $ fmapMaybe id newItem
 
-chatListItem :: MonadWidget t m => Dynamic t Chat -> m ()
-chatListItem c = do
+chatListItem :: MonadWidget t m => Dynamic t Chat -> Dynamic t Int -> m ()
+chatListItem c n = do
   iconDyn =<< mapDyn (\c' -> if isLeft (chatDestination c') then "circle fa-fw fa-sm" else "hashtag fa-fw fa-sm") c
   text " "
   dynText =<< mapDyn showChatName c
+  dyn =<< mapDyn (\num -> if num > 0 then elClass "span" "badge" (text $ show num) else return ()) n
+  return ()
 
 dmIsNew :: Maybe Nick -> Map (Maybe Chat) Chat -> Envelope Message -> Bool
 dmIsNew n cs m =
@@ -254,10 +257,13 @@ inputGroupWithButton sz placeholder focus buttonChild = do
 validateNonBlank :: Text -> Maybe Text
 validateNonBlank t = if T.null (T.strip t) then Nothing else Just t
 
-listGroup :: (Ord k, MonadWidget t m) => Dynamic t (Map k v) -> Dynamic t k -> (Dynamic t v -> m ()) -> m (Event t k)
-listGroup as selection child = divClass "list-group" $ selectViewListWithKey_ selection as $ \_ v s -> do
+listGroup :: (Ord k, MonadWidget t m) => Dynamic t (Map k v) -> Dynamic t k -> (k -> Event t ()) -> (Dynamic t v -> Dynamic t Int -> m ()) -> m (Event t k)
+listGroup as selection msg child = divClass "list-group" $ selectViewListWithKey_ selection as $ \k v s -> do
   style <- forDyn s $ \active -> "style" =: "cursor: pointer;" <> "class" =: ("list-group-item" <> if active then " active" else "")
-  liftM (domEvent Click . fst) $ elDynAttr' "a" style $ child v
+  n <- foldDyn ($) 0 $ leftmost [ fmap (\_ -> (+) 1) $ gate (not <$> current s) $ msg k
+                                , fmap (\_ -> (const 0)) $ ffilter id (updated s)
+                                ]
+  liftM (domEvent Click . fst) $ elDynAttr' "a" style $ child v n
 
 popup :: MonadWidget t m => (Event t () -> m (Event t a)) -> m (Event t (Maybe a))
 popup child = do
@@ -383,6 +389,10 @@ customCss = [r|
       display: block;
       margin-right: 10px;
       box-shadow: 6px 12px 24px rgba(0,0,0,0.75);
+    }
+    .badge {
+      background-color: #EB4D5C;
+      color: white;
     }
   |]
   where

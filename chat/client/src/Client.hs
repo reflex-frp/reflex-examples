@@ -269,11 +269,15 @@ openWebSocket wsUp = do
   host <- getLocationHost wv
   protocol <- getLocationProtocol wv
   let wsProtocol = case protocol of
+        "" -> "ws:" -- We're in GHC
+        "about:" -> "ws:" -- We're in GHC
         "file:" -> "ws:"
         "http:" -> "ws:"
         "https:" -> "wss:"
-        _ -> error "Unrecognized protocol: " <> protocol
+        _ -> error $ "Unrecognized protocol: " <> show protocol
       wsHost = case protocol of
+        "" -> "localhost:8000" -- We're in GHC
+        "about:" -> "localhost:8000" -- We're in GHC
         "file:" -> "localhost:8000"
         _ -> host
   ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def

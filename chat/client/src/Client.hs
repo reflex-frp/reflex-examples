@@ -34,19 +34,19 @@ headTag = do
 
 bodyTag :: MonadWidget t m => m ()
 bodyTag = divClass "flex-container" $ do
-  rec (nick, newChannel, chats, chat) <- divClass "flex-nav" $ chatSettings newDm
-      newDm <- divClass "flex-content" $ do
+  rec (nick, newChannel, chats, chat) <- divClass "flex-nav" $ chatSettings wsOpen newDm
+      (newDm, wsOpen) <- divClass "flex-content" $ do
         rec let channels = rights . map chatDestination . Map.elems
                 wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ attachWith (\n (c, m) -> message n c m) (current nick) send
                                , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
                                , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
-                               , attachWithMaybe (\n c -> fmap ((:[]) . Up_JoinChannel c) n) (current nick) newChannel
+                               , attachDynWithMaybe (\n c -> fmap ((:[]) . Up_JoinChannel c) n) nick newChannel
                                , attachWith (\cs n -> catMaybes $ map (\c -> Up_JoinChannel <$> pure c <*> n) $ channels cs) (current chats) (updated nick)
                                -- ^ Rejoin Channels with new Nick when Nick changes
                                , tag ((\cs n -> catMaybes $ map (\c -> Up_LeaveChannel <$> pure c <*> n) $ channels cs) <$> current chats <*> current nick) (updated nick)
                                -- ^ Leave Channels with old Nick when Nick changes
                                ]
-            wsDown <- openWebSocket wsUp
+            (wsDown, wsOpen) <- openWebSocket wsUp
             let newMsg = fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown
             messages <- foldDyn (\n ms -> reverse $ n : reverse ms) [] newMsg
             sendMsgs <- listWithKey chats $ \k c -> do
@@ -54,7 +54,7 @@ bodyTag = divClass "flex-container" $ do
               msg <- history relevantMessages =<< mapDyn (== k) chat
               return $ fmap ((,) k) msg
             send <- liftM (switch . current) $ mapDyn (leftmost . Map.elems) sendMsgs
-        return newMsg
+        return (newMsg, wsOpen)
   return ()
 
 data Chat = Chat_DirectMessage Nick
@@ -63,18 +63,19 @@ data Chat = Chat_DirectMessage Nick
 
 chatSettings
   :: MonadWidget t m
-  => Event t (Envelope Message) -- ^ New Message
+  => Event t () -- ^ Connection established
+  -> Event t (Envelope Message) -- ^ New Message
   -> m ( Dynamic t (Maybe Nick) -- Current Nick
        , Event t ChannelId -- New Channel event
        , Dynamic t (Map (Maybe Chat) Chat) -- Connected Chats
        , Dynamic t (Maybe Chat) -- Currently selected Chat
        )
-chatSettings newMsg = divClass "chat-settings" $ do
-  n <- el "div" nickInput
+chatSettings wsOpen newMsg = divClass "chat-settings" $ do
+  n <- el "div" $ nickInput wsOpen
+  let c0 = fmap (const $ ChannelId "reflex") $ fmapMaybe id $ updated n
   rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel c0 Chat_Channel cSelection
-      let c0 = fmap (const $ ChannelId "reflex") $ fmapMaybe id $ updated n
-      cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick, fmap (Just . Chat_Channel) c0]
-      (dm, dms, dmClick) <- chatSettingsGroup "DIRECT MESSAGES" addDirectMessage newDm Chat_DirectMessage dmSelection
+      cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick]
+      (_, dms, dmClick) <- chatSettingsGroup "DIRECT MESSAGES" addDirectMessage newDm Chat_DirectMessage dmSelection
       dmSelection <- holdDyn Nothing $ leftmost [dmClick, Nothing <$ cClick]
       chats <- combineDyn Map.union dms cs
       chat <- combineDyn (\r c -> case (r, c) of
@@ -85,8 +86,9 @@ chatSettings newMsg = divClass "chat-settings" $ do
   return (n, c, chats, chat)
   where
     chatSettingsGroup heading addItem newItem tyCon sel = do
-      rec item <- chatSettingsHeading heading items addItem
-          items <- foldDyn (\x -> Map.insert (Just $ tyCon x) (tyCon x)) Map.empty $ leftmost [item, newItem]
+      rec new <- chatSettingsHeading heading items addItem
+          let item = leftmost [new, newItem]
+          items <- foldDyn (\x -> Map.insert (Just $ tyCon x) (tyCon x)) Map.empty item
           let msg = \k -> fmap (const ()) $ ffilter (\m -> Just True == (relevantMessage <$> k <*> pure m)) newMsg
           click <- listGroup items sel msg chatListItem
       return (item, items, click)
@@ -131,10 +133,9 @@ chatDestination c = case c of
 message :: Maybe Nick -> Maybe Chat -> String -> Maybe Message
 message sender chat msg = Message <$> sender <*> (chatDestination <$> chat) <*> validateNonBlank (T.pack msg)
 
-nickInput :: MonadWidget t m => m (Dynamic t (Maybe Nick))
-nickInput = do
-  pb <- getPostBuild
-  anonNumber <- performEventAsync $ fmap (\_ cb -> liftIO $ cb =<< getStdRandom (randomR (1::Integer, 1000000))) pb
+nickInput :: MonadWidget t m => Event t () -> m (Dynamic t (Maybe Nick))
+nickInput wsOpen = do
+  anonNumber <- performEventAsync $ fmap (\_ cb -> liftIO $ cb =<< getStdRandom (randomR (1::Integer, 1000000))) wsOpen
   let startingNick = fmap (("anon-"<>) . show) anonNumber
   rec editNick <- elClass "h4" "profile" $ do
         iconDyn =<< mapDyn (\n -> if isNothing n then "circle-o offline" else "circle online") nick
@@ -280,7 +281,7 @@ popup open close child = do
       return $ leftmost [fmap Just c, Nothing <$ close, Nothing <$ closeBtn]
 
 
-openWebSocket :: MonadWidget t m => Event t [Up] -> m (Event t (Maybe Down))
+openWebSocket :: MonadWidget t m => Event t [Up] -> m (Event t (Maybe Down), Event t ())
 openWebSocket wsUp = do
   wv <- askWebView
   host <- getLocationHost wv
@@ -304,7 +305,7 @@ openWebSocket wsUp = do
       let send = fmap (fmap (LBS.toStrict . encode)) $ leftmost [ gate (current websocketReady) wsUp
                                                                 , tag (current buffer) (_webSocket_open ws)
                                                                 ]
-  return $ fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws
+  return $ (fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws, _webSocket_open ws)
 
 customCss :: String
 customCss = [r|

@@ -3,12 +3,17 @@ module Client where
 
 import Common.Api
 
+import Control.Lens
+import Control.Applicative
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Maybe
 import Data.Aeson
 import Data.Either
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Maybe
 import Data.Monoid
 import Data.Text (Text)
@@ -19,7 +24,6 @@ import Reflex.Dom
 import System.Random
 import Text.RawString.QQ
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Map as Map
 import qualified Data.Text as T
 
 main :: IO ()
@@ -34,22 +38,23 @@ headTag = do
 
 bodyTag :: MonadWidget t m => m ()
 bodyTag = divClass "flex-container" $ do
-  rec (nick, newChannel, chats, chat) <- divClass "flex-nav" $ chatSettings wsOpen newDm
+  rec (nick, newChannel, chats, chat) <- divClass "flex-nav" $ chatSettings newDm
       (newDm, wsOpen) <- divClass "flex-content" $ do
-        rec let channels = rights . map chatDestination . Map.elems
+        rec let channels = rights . map chatDestination . Set.toList
                 wsUp = mconcat [ fmapMaybe (fmap $ (:[]) . Up_Message) $ attachWith (\n (c, m) -> message n c m) (current nick) send
-                               , fmapMaybe (fmap $ (:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
-                               , fmapMaybe (fmap $ (:[]) . Up_AddNick) (updated nick)
-                               , attachDynWithMaybe (\n c -> fmap ((:[]) . Up_JoinChannel c) n) nick newChannel
-                               , attachWith (\cs n -> catMaybes $ map (\c -> Up_JoinChannel <$> pure c <*> n) $ channels cs) (current chats) (updated nick)
-                               -- ^ Rejoin Channels with new Nick when Nick changes
-                               , tag ((\cs n -> catMaybes $ map (\c -> Up_LeaveChannel <$> pure c <*> n) $ channels cs) <$> current chats <*> current nick) (updated nick)
+                               , fmap ((:[]) . Up_RemoveNick) (tag (current nick) $ updated nick)
+                               , fmap ((:[]) . Up_AddNick) $ leftmost [updated nick, tag (current nick) $ traceEvent "wsOpen" wsOpen]
+                               , tag ((\cs n -> map (\c -> Up_LeaveChannel c n) $ channels cs) <$> current chats <*> current nick) (updated nick)
                                -- ^ Leave Channels with old Nick when Nick changes
+                               , attachDynWith (\n c -> [Up_JoinChannel c n]) nick newChannel
+                               , attachWith (\cs n -> map (\c -> Up_JoinChannel c n) $ channels cs) (current chats) $ leftmost [updated nick, tag (current nick) wsOpen]
+                               -- ^ Rejoin Channels with new Nick when Nick changes
                                ]
             (wsDown, wsOpen) <- openWebSocket wsUp
             let newMsg = fmapMaybe (\x -> case x of Just (Down_Message e) -> Just e; _ -> Nothing) wsDown
             messages <- foldDyn (\n ms -> reverse $ n : reverse ms) [] newMsg
-            sendMsgs <- listWithKey chats $ \k c -> do
+            chats' <- mapDyn (Map.mapKeys Just . Map.fromSet id) chats
+            sendMsgs <- listWithKey chats' $ \k c -> do
               relevantMessages <- mapDyn (filter (\m -> Just True == (relevantMessage <$> k <*> pure m))) messages
               msg <- history relevantMessages =<< mapDyn (== k) chat
               return $ fmap ((,) k) msg
@@ -62,40 +67,51 @@ data Chat = Chat_DirectMessage Nick
           deriving (Show, Read, Eq, Ord)
 
 chatSettings
-  :: MonadWidget t m
-  => Event t () -- ^ Connection established
-  -> Event t (Envelope Message) -- ^ New Message
-  -> m ( Dynamic t (Maybe Nick) -- Current Nick
+  :: forall t m. MonadWidget t m
+  => Event t (Envelope Message) -- ^ New Message
+  -> m ( Dynamic t Nick -- Current Nick
        , Event t ChannelId -- New Channel event
-       , Dynamic t (Map (Maybe Chat) Chat) -- Connected Chats
+       , Dynamic t (Set Chat) -- Connected Chats
        , Dynamic t (Maybe Chat) -- Currently selected Chat
        )
-chatSettings wsOpen newMsg = divClass "chat-settings" $ do
-  n <- el "div" $ nickInput wsOpen
-  c0 <- headE $ fmap (const $ ChannelId "reflex") $ fmapMaybe id $ updated n
-  rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel c0 Chat_Channel cSelection
-      cSelection <- holdDyn Nothing $ leftmost [cClick, Nothing <$ dmClick]
-      (_, dms, dmClick) <- chatSettingsGroup "DIRECT MESSAGES" addDirectMessage newDm Chat_DirectMessage dmSelection
-      dmSelection <- holdDyn Nothing $ leftmost [dmClick, Nothing <$ cClick]
-      chats <- combineDyn Map.union dms cs
-      chat <- combineDyn (\r c -> case (r, c) of
-        (Just r', _) -> r
-        (_, Just c') -> c
-        _ -> Nothing) dmSelection cSelection
-      let newDm = attachWithMaybe (\isNew m -> if isNew m then Just (_message_from $ _envelope_contents m) else Nothing) (dmIsNew <$> current n <*> current chats) newMsg
+chatSettings newMsg = divClass "chat-settings" $ do
+  n <- el "div" nickInput
+  rec (c, cs, cClick) <- chatSettingsGroup "CHANNELS" addChannel (Set.singleton $ ChannelId "reflex") never Chat_Channel cSelection
+      (_, dms, dmClick) <- chatSettingsGroup "DIRECT MESSAGES" addDirectMessage Set.empty newDm Chat_DirectMessage dmSelection
+      dms' <- mapDyn (Set.map Chat_DirectMessage) dms
+      cs' <- mapDyn (Set.map Chat_Channel) cs
+      chats <- combineDyn Set.union dms' cs'
+      chat <- holdDyn Nothing $ leftmost [ fmap Chat_Channel <$> cClick
+                                         , fmap Chat_DirectMessage <$> dmClick
+                                         ]
+      cSelection <- mapDyn (join . fmap ((^? _Right) . chatDestination)) chat
+      dmSelection <- mapDyn (join . fmap ((^? _Left) . chatDestination)) chat
+      let newDm = attachWithMaybe (\isNew m -> if isNew m then Just (Set.singleton $ _message_from $ _envelope_contents m) else Nothing) (dmIsNew <$> current n <*> current chats) newMsg
   return (n, c, chats, chat)
   where
-    chatSettingsGroup heading addItem newItem tyCon sel = do
+    chatSettingsGroup :: (Ord a)
+                      => String
+                      -> (Event t () -> m (Event t a))
+                      -> Set a
+                      -> Event t (Set a)
+                      -> (a -> Chat)
+                      -> Dynamic t (Maybe a)
+                      -> m ( Event t a
+                           , Dynamic t (Set a)
+                           , Event t (Maybe a)
+                           )
+    chatSettingsGroup heading addItem items0 newItems toChat sel = do
       rec new <- chatSettingsHeading heading items addItem
-          let item = leftmost [new, newItem]
-          items <- foldDyn (\x -> Map.insert (Just $ tyCon x) (tyCon x)) Map.empty item
-          let msg = \k -> fmap (const ()) $ ffilter (\m -> Just True == (relevantMessage <$> k <*> pure m)) newMsg
-          click <- listGroup items sel msg chatListItem
-      return (item, items, click)
+          items <- foldDyn Set.union items0 $ fmap Set.singleton new <> newItems
+          let msg = \k -> fmap (const ()) $ ffilter (\m -> Just True == (relevantMessage <$> (toChat <$> k) <*> pure m)) newMsg
+          items' <- mapDyn (Map.mapKeys Just . Map.fromSet toChat) items
+          click <- listGroup items' sel msg chatListItem
+      return (new, items, click)
+    chatSettingsHeading :: String -> Dynamic t (Set a) -> (Event t () -> m (Event t b)) -> m (Event t b)
     chatSettingsHeading label xs child = divClass "nav-group-heading" $ do
       elClass "span" "nav-group-heading-label" $ text label
       text " ("
-      display =<< mapDyn Map.size xs
+      display =<< mapDyn Set.size xs
       text ")"
       add <- liftM (domEvent Click) $ iconDyn (constDyn "plus-circle pull-right fa-fw nav-group-add")
       popup add never child
@@ -109,11 +125,11 @@ chatListItem c n = do
   dyn =<< mapDyn (\num -> if num > 0 then elClass "span" "badge" (text $ show num) else return ()) n
   return ()
 
-dmIsNew :: Maybe Nick -> Map (Maybe Chat) Chat -> Envelope Message -> Bool
+dmIsNew :: Nick -> Set Chat -> Envelope Message -> Bool
 dmIsNew n cs m =
   let from = _message_from $ _envelope_contents m
       dm = isLeft $ _message_to $ _envelope_contents m
-  in dm && Just from /= n && isNothing (Map.lookup (Just (Chat_DirectMessage from)) cs)
+  in dm && from /= n && (Chat_DirectMessage from `Set.notMember` cs)
 
 relevantMessage :: Chat -> Envelope Message -> Bool
 relevantMessage c (Envelope _ m) = case c of
@@ -130,20 +146,20 @@ chatDestination c = case c of
   Chat_DirectMessage n -> Left n
   Chat_Channel chan -> Right chan
 
-message :: Maybe Nick -> Maybe Chat -> String -> Maybe Message
-message sender chat msg = Message <$> sender <*> (chatDestination <$> chat) <*> validateNonBlank (T.pack msg)
+message :: Nick -> Maybe Chat -> String -> Maybe Message
+message sender chat msg = Message <$> pure sender <*> (chatDestination <$> chat) <*> validateNonBlank (T.pack msg)
 
-nickInput :: MonadWidget t m => Event t () -> m (Dynamic t (Maybe Nick))
-nickInput wsOpen = do
-  anonNumber <- performEventAsync $ fmap (\_ cb -> liftIO $ cb =<< getStdRandom (randomR (1::Integer, 1000000))) wsOpen
-  let startingNick = fmap (("anon-"<>) . show) anonNumber
+nickInput :: MonadWidget t m => m (Dynamic t Nick)
+nickInput = do
+  anonNumber <- liftIO $ getStdRandom $ randomR (1::Integer, 1000000)
+  let startingNick = Nick $ T.pack $ "anon-" <> show anonNumber
   rec editNick <- elClass "h4" "profile" $ do
-        iconDyn =<< mapDyn (\n -> if isNothing n then "circle-o offline" else "circle online") nick
-        dynText =<< mapDyn (maybe "" $ (" "<>) . T.unpack . unNick) nick
+        iconDyn =<< mapDyn (\n -> {- if isNothing n then "circle-o offline" else -} "circle online") nick
+        dynText =<< mapDyn ((" "<>) . T.unpack . unNick) nick
         iconDyn (constDyn "pencil pull-right fa-fw nav-group-add")
       n <- popup (domEvent Click editNick) never $ \focus ->
         inputGroupWithButton ComponentSize_Small "Set Nick" focus $ text "Set"
-      nick <- holdDyn Nothing $ fmap (validNick . T.pack) $ leftmost [startingNick, n]
+      nick <- holdDyn startingNick $ fmapMaybe (validNick . T.pack) n
   return nick
 
 addDirectMessage :: MonadWidget t m => Event t () -> m (Event t Nick)
@@ -280,6 +296,8 @@ popup open close child = do
       c <- child =<< getPostBuild
       return $ leftmost [fmap Just c, Nothing <$ close, Nothing <$ closeBtn]
 
+gateDyn :: Reflex t => Dynamic t Bool -> Event t a -> Event t a
+gateDyn d e = attachDynWithMaybe (\b a -> if b then Just a else Nothing) d e
 
 openWebSocket :: MonadWidget t m => Event t [Up] -> m (Event t (Maybe Down), Event t ())
 openWebSocket wsUp = do
@@ -301,8 +319,9 @@ openWebSocket wsUp = do
   rec ws <- webSocket (wsProtocol <> "//" <> wsHost <> "/api") $ def
         & webSocketConfig_send .~ send
       websocketReady <- holdDyn False $ fmap (const True) $ _webSocket_open ws
-      buffer <- foldDyn (++) [] $ gate (not <$> current websocketReady) wsUp
-      let send = fmap (fmap (LBS.toStrict . encode)) $ leftmost [ gate (current websocketReady) wsUp
+      websocketNotReady <- mapDyn not websocketReady
+      buffer <- foldDyn (++) [] $ gateDyn websocketNotReady wsUp
+      let send = fmap (fmap (LBS.toStrict . encode)) $ leftmost [ gateDyn websocketReady wsUp
                                                                 , tag (current buffer) (_webSocket_open ws)
                                                                 ]
   return $ (fmap (decode' . LBS.fromStrict)$ _webSocket_recv ws, _webSocket_open ws)

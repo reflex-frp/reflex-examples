@@ -56,10 +56,8 @@ testXhrResponseText = do
   pb <- getPostBuild
   header "_xhrResponse_responseText test" "Retrieves ./out.stats and displays resulting responseText."
 
-  rt :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ XhrRequest "GET" "./out.stats" def <$ pb
-  dynText <=< holdDyn "" $ fforMaybe rt $ \case
-    Right r -> fmap T.unpack $ _xhrResponse_responseText r
-    Left ex -> Just "Exception"
+  rt :: Event t XhrResponse <- performRequestAsync $ XhrRequest "GET" "./out.stats" def <$ pb
+  dynText <=< holdDyn "" $ fforMaybe rt $  fmap T.unpack . _xhrResponse_responseText
 
   el "hr" $ return ()
 
@@ -72,9 +70,9 @@ testXhrResponseBody = do
   wv <- askWebView -- JavaScriptCore requires a JS context to run FFI calls. This context can be derived from the WebView.
 
   let imgReq = XhrRequest "GET" "./test.jpg" $ def { _xhrRequestConfig_responseType = Just XhrResponseType_Blob }
-  ri :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ imgReq <$ pb
-  imageUrl <- fmap (fmapMaybe id) $ performEvent $ ffor ri $ \ri' -> case fmap _xhrResponse_response ri' of
-      Right (Just i) -> liftIO $ createObjectURL wv i
+  ri :: Event t XhrResponse <- performRequestAsync $ imgReq <$ pb
+  imageUrl <- fmap (fmapMaybe id) $ performEvent $ ffor ri $ \ri' -> case _xhrResponse_response ri' of
+      Just i -> liftIO $ createObjectURL wv i
       _ -> return $ Nothing
   _ <- widgetHold (return ()) $ ffor imageUrl $ \u -> elAttr "img" ("src" =: u) $ return ()
 
@@ -89,7 +87,7 @@ testXhrExceptions = do
   wv <- askWebView
 
   let imgReq = XhrRequest "GET" "http://the-fakest-host.abcdef/not-there.jpg" $ def { _xhrRequestConfig_responseType = Just XhrResponseType_Blob }
-  ri :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ imgReq <$ pb
+  ri :: Event t (Either XhrException XhrResponse) <- performRequestAsyncWithError $ imgReq <$ pb
   imageUrl <- fmap (fmapMaybe id) $ performEvent $ ffor ri $ \ri' -> case fmap _xhrResponse_response ri' of
       Right (Just i) -> liftIO $ createObjectURL wv i
       _ -> return $ Just "./error.png"
@@ -97,7 +95,7 @@ testXhrExceptions = do
 
   el "hr" $ return ()
 
-  rt :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ XhrRequest "GET" "http://the-fakest-host.abcdef/not-there.txt" def <$ pb
+  rt :: Event t (Either XhrException XhrResponse) <- performRequestAsyncWithError $ XhrRequest "GET" "http://the-fakest-host.abcdef/not-there.txt" def <$ pb
   dynText <=< holdDyn "" $ fforMaybe rt $ \case
     Right r -> fmap T.unpack $ _xhrResponse_responseText r
     Left ex -> Just $ "Exception handled: " ++ show ex

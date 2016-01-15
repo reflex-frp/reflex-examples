@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, JavaScriptFFI, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, JavaScriptFFI, ScopedTypeVariables, LambdaCase #-}
 
 import Reflex.Dom
 import Control.Monad
@@ -8,6 +8,7 @@ import qualified Data.Text as T
 #ifdef ghcjs_HOST_OS
 import GHCJS.Types
 import GHCJS.Foreign
+import Data.JSString (unpack)
 #else
 import Foreign.Ptr
 import System.Glib.FFI
@@ -26,7 +27,7 @@ foreign import javascript unsafe "window['URL']['createObjectURL']($1)" createOb
 
 -- The first argument is unnecessary here, but necessary in the webkitgtk binding
 createObjectURL :: a -> XhrResponseBody -> IO (Maybe String)
-createObjectURL _ r = Just . fromJSString <$> createObjectURL_ (unXhrResponseBody r)
+createObjectURL _ r = Just . unpack <$> createObjectURL_ (unXhrResponseBody r)
 
 #else
 -- JavaScriptCore binding of createObjectURL for use with webkitgtk
@@ -48,15 +49,17 @@ createObjectURL wv r = do
 #endif
 
 main :: IO ()
-main = mainWidget $ title >> testXhrResponseBody >> testXhrResponseText
+main = mainWidget $ title >> testXhrResponseBody >> testXhrResponseText >> testXhrExceptions
 
 testXhrResponseText :: forall t m. MonadWidget t m => m ()
 testXhrResponseText = do
   pb <- getPostBuild
   header "_xhrResponse_responseText test" "Retrieves ./out.stats and displays resulting responseText."
 
-  rt :: Event t (Maybe T.Text) <- fmap (fmap _xhrResponse_responseText) $ performRequestAsync $ XhrRequest "GET" "./out.stats" def <$ pb
-  dynText <=< holdDyn "" $ fmapMaybe (T.unpack <$>) rt
+  rt :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ XhrRequest "GET" "./out.stats" def <$ pb
+  dynText <=< holdDyn "" $ fforMaybe rt $ \case
+    Right r -> fmap T.unpack $ _xhrResponse_responseText r
+    Left ex -> Just "Exception"
 
   el "hr" $ return ()
 
@@ -69,9 +72,35 @@ testXhrResponseBody = do
   wv <- askWebView -- JavaScriptCore requires a JS context to run FFI calls. This context can be derived from the WebView.
 
   let imgReq = XhrRequest "GET" "./test.jpg" $ def { _xhrRequestConfig_responseType = Just XhrResponseType_Blob }
-  ri :: Event t (Maybe XhrResponseBody) <- fmap (fmap _xhrResponse_response) $ performRequestAsync $ imgReq <$ pb
-  imageUrl <- fmap (fmapMaybe join) $ performEvent $ fmap (maybe (return Nothing) (fmap Just . liftIO . createObjectURL wv)) ri
+  ri :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ imgReq <$ pb
+  imageUrl <- fmap (fmapMaybe id) $ performEvent $ ffor ri $ \ri' -> case fmap _xhrResponse_response ri' of
+      Right (Just i) -> liftIO $ createObjectURL wv i
+      _ -> return $ Nothing
   _ <- widgetHold (return ()) $ ffor imageUrl $ \u -> elAttr "img" ("src" =: u) $ return ()
+
+  el "hr" $ return ()
+
+testXhrExceptions :: (HasWebView m, MonadWidget t m) => m ()
+testXhrExceptions = do
+  pb <- getPostBuild
+  header "XhrException test" "Tries to retrieve resources at invalid URLs and displays exception image/message."
+  el "hr" $ return ()
+
+  wv <- askWebView
+
+  let imgReq = XhrRequest "GET" "http://the-fakest-host.abcdef/not-there.jpg" $ def { _xhrRequestConfig_responseType = Just XhrResponseType_Blob }
+  ri :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ imgReq <$ pb
+  imageUrl <- fmap (fmapMaybe id) $ performEvent $ ffor ri $ \ri' -> case fmap _xhrResponse_response ri' of
+      Right (Just i) -> liftIO $ createObjectURL wv i
+      _ -> return $ Just "./error.png"
+  _ <- widgetHold (return ()) $ ffor imageUrl $ \u -> elAttr "img" ("src" =: u) $ return ()
+
+  el "hr" $ return ()
+
+  rt :: Event t (Either XhrException XhrResponse) <- performRequestAsync $ XhrRequest "GET" "http://the-fakest-host.abcdef/not-there.txt" def <$ pb
+  dynText <=< holdDyn "" $ fforMaybe rt $ \case
+    Right r -> fmap T.unpack $ _xhrResponse_responseText r
+    Left ex -> Just $ "Exception handled: " ++ show ex
 
   el "hr" $ return ()
 

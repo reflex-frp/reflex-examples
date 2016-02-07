@@ -1,9 +1,10 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, RecursiveDo #-}
 
-import Control.Monad (replicateM, replicateM_, forM)
+import Control.Monad (replicateM, replicateM_, forM, msum)
 import Reflex.Dom
-import Data.Maybe
+import Data.Maybe (catMaybes, isJust)
 import Data.ByteString (ByteString)
+import Data.List
 
 main :: IO ()
 main = mainWidgetWithCss css $ do
@@ -17,10 +18,21 @@ css = "table { border-collapse: collapse; }\
 
 type Board = [[Maybe Marker]]
 
+winner :: Board -> Maybe Marker
+winner b = msum $ map rowWinner (transpose b) ++ map rowWinner b
+  where
+    rowWinner r = case nub r of
+                       [Just x] -> Just x
+                       _ -> Nothing
+
 tictactoe :: MonadWidget t m => m ()
 tictactoe = do
-  rec board <- tictactoeBoard who
+  rec board <- tictactoeBoard who'
+      gameOver <- mapDyn (isJust . winner) board
       who <- mapDyn ((\x -> if x then Marker_X else Marker_O) . even . length . catMaybes . concat) board
+      who' <- combineDyn (\go w -> if go then Nothing else Just w) gameOver who
+  el "div" $ dynText =<< mapDyn (\w -> "Turn: " ++ markerToString w) who
+  el "div" $ dynText =<< mapDyn (\b -> show $ fmap markerToString $ winner b) board
   dyn =<< mapDyn (\b -> displayBoard b) board
   return ()
 
@@ -31,7 +43,7 @@ displayBoard b = do
                                                                          Just m -> markerToString m
   return ()
 
-tictactoeBoard :: MonadWidget t m => Dynamic t Marker -> m (Dynamic t Board)
+tictactoeBoard :: MonadWidget t m => Dynamic t (Maybe Marker) -> m (Dynamic t Board)
 tictactoeBoard who = el "table" $ do
   markers :: [Dynamic t [[Maybe Marker]]] <- replicateM 3 $ do
     row :: Dynamic t [Maybe Marker] <- el "tr" $ do
@@ -49,10 +61,10 @@ data Marker = Marker_X
             | Marker_O
             deriving (Show, Read, Eq, Ord)
 
-inputWidget :: forall t m. MonadWidget t m => Dynamic t Marker -> m (Dynamic t (Maybe Marker))
+inputWidget :: forall t m. MonadWidget t m => Dynamic t (Maybe Marker) -> m (Dynamic t (Maybe Marker))
 inputWidget who = do
   rec edit <- buttonDyn dynamicLabel
-      let makeMark :: Event t Marker = tag (current who) edit
+      let makeMark :: Event t Marker = fmapMaybe id $ tag (current who) edit
       marker <- holdDyn Nothing $ fmap Just makeMark
       dynamicLabel <- mapDyn (maybe " " markerToString) marker
   return marker

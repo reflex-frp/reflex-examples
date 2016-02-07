@@ -1,4 +1,4 @@
-name:                tictactoe-frontend
+name:                tictactoe-backend
 version:             0.1.0.0
 license-file:        LICENSE
 author:              Ryan Trinkle
@@ -6,7 +6,7 @@ maintainer:          ryan.trinkle@gmail.com
 build-type:          Simple
 cabal-version:       >=1.10
 
-executable tictactoe-frontend
+executable tictactoe-backend
   main-is:             Main.hs
   build-depends: base >=4.8 && <4.9
                , snap

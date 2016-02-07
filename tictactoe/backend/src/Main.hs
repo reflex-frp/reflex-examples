@@ -4,6 +4,7 @@ import Snap.Util.FileServe
 import Control.Monad
 import Network.WebSockets
 import Network.WebSockets.Snap
+import Common
 
 main :: IO ()
 main = quickHttpServe $ do

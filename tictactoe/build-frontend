@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+./try-reflex/work-on ghcjs ./frontend --run "ghcjs -i{common,frontend}/src Main"

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+./try-reflex/work-on ghc ./backend --run "ghci -i{common,backend}/src Main"

@@ -1,13 +1,19 @@
-{-# LANGUAGE ScopedTypeVariables, RecursiveDo #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, RecursiveDo #-}
 
 import Control.Monad (replicateM, replicateM_, forM)
 import Reflex.Dom
 import Data.Maybe
+import Data.ByteString (ByteString)
 
 main :: IO ()
-main = mainWidget $ do
+main = mainWidgetWithCss css $ do
   el "h1" $ text "Tic Tac Toe"
   tictactoe
+
+css :: ByteString
+css = "table { border-collapse: collapse; }\
+      \td + td, th + th { border-left: 1px solid; }\
+      \tr + tr { border-top: 1px solid; }"
 
 type Board = [[Maybe Marker]]
 
@@ -30,7 +36,7 @@ tictactoeBoard who = el "table" $ do
   markers :: [Dynamic t [[Maybe Marker]]] <- replicateM 3 $ do
     row :: Dynamic t [Maybe Marker] <- el "tr" $ do
       markerRow :: [Dynamic t [Maybe Marker]] <- replicateM 3 $ do
-        m <- elAttr "td" ("style" =: "border: 1px solid black;") $ inputWidget who
+        m <- el "td" $ inputWidget who
         singleM :: Dynamic t [(Maybe Marker)] <- mapDyn (:[]) m
         return singleM
       mconcatDyn markerRow

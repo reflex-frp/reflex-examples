@@ -49,6 +49,14 @@ askPostEvent = do
   runWithActions <- askRunWithActions
   return (\t a -> postGui $ runWithActions [t :=> Identity a])
 
+
+askPostEvent :: MonadWidget t m => m (EventTrigger t a -> a -> IO ())
+askPostEvent = do
+  postGui <- askPostGui
+  runWithActions <- askRunWithActions
+  return (\t a -> postGui $ runWithActions [t :=> a])
+
+
 buildEvent :: (MonadWidget t m)
            => ((a -> IO ()) -> IO (IO ()))
            -> m (Event t a)
@@ -68,3 +76,4 @@ dataURLFileReader request =
      performEvent_ (fmap (\f -> readAsDataURL fileReader (Just f)) request)
      e <- buildEvent (on fileReader load . handler)
      return (fmapMaybe id e)
+

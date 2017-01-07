@@ -1,6 +1,6 @@
-{-# LANGUAGE RecursiveDo, OverloadedLists, ScopedTypeVariables  #-}
+{-# LANGUAGE RecursiveDo, OverloadedLists, ScopedTypeVariables, OverloadedStrings  #-}
 
-{- 
+{-
  - Stripped version of todo list: just add new todo and delete an old one
  -}
 
@@ -8,6 +8,7 @@ import Reflex
 import Reflex.Dom
 import Control.Lens
 import qualified Data.Map as M
+import qualified Data.Text as T
 
 
 type MM a = M.Map Int a
@@ -19,27 +20,27 @@ new v m = case M.maxViewWithKey m of
     Just ((k, _), _) -> M.insert (succ k) v m
 
 -- output the ul of the elements of the given map and return the delete event for each key
-ulW :: MonadWidget t m => Dynamic t (MM String) -> m (Dynamic t (MM (Event t Int))) 
+ulW :: MonadWidget t m => Dynamic t (MM T.Text) -> m (Dynamic t (MM (Event t Int)))
 ulW xs = elClass "ul" "list" $ listWithKey xs $ \k x -> elClass "li" "element" $ do
     dynText x -- output the text
     fmap (const k) <$> elClass "div" "delete" (button "x") -- tag the event of button press with the key of the text
 
 -- output an input text widget with auto clean on return and return an event firing on return containing the string before clean
-inputW :: MonadWidget t m => m (Event t String)
+inputW :: MonadWidget t m => m (Event t T.Text)
 inputW = do
     rec let send = ffilter (==13) $ view textInput_keypress input -- send signal firing on *return* key press
         input <- textInput $ def & setValue .~ fmap (const "") send -- textInput with content reset on send
     return $ tag (current $ view textInput_value input) send -- tag the send signal with the inputText value BEFORE resetting
     
--- circuit ulW with a MM String kept updated by new strings from the passed event and deletion of single element in the MM 
-listW :: MonadWidget t m => Event t String -> m ()
+-- circuit ulW with a MM String kept updated by new strings from the passed event and deletion of single element in the MM
+listW :: MonadWidget t m => Event t T.Text -> m ()
 listW e = do
     rec xs <- foldDyn ($) M.empty $ mergeWith (.)  -- live state, updated by two signals
             [   fmap new e -- insert a new text
             ,   switch . current $ zs  -- delete text at specific keys
             ]
         bs <- ulW xs -- delete signals from outputted state
-        zs <- mapDyn (mergeWith (.) . map (fmap $ M.delete) . M.elems) bs  -- merge delete events
+        let zs = fmap (mergeWith (.) . map (fmap $ M.delete) . M.elems) bs  -- merge delete events
     return ()
 
 main = mainWidget $ el "div" $ inputW >>= listW

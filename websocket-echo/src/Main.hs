@@ -1,4 +1,4 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE RecursiveDo, OverloadedStrings #-}
 import Reflex.Dom
 import qualified Data.Text as T
 import Data.Text.Encoding
@@ -9,14 +9,14 @@ main = mainWidget $ do
   header
   rec t <- textInput $ def & setValue .~ fmap (const "") newMessage
       b <- button "Send"
-      let newMessage = fmap ((:[]) . encodeUtf8 . T.pack) $ tag (current $ value t) $ leftmost [b, textInputGetEnter t]
+      let newMessage = fmap ((:[]) . encodeUtf8) $ tag (current $ value t) $ leftmost [b, keypress Enter t]
   ws <- webSocket "ws://echo.websocket.org" $ def & webSocketConfig_send .~ newMessage
   receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] $ _webSocket_recv ws
   el "p" $ text "Responses from the WebSocket.org echo service:"
-  _ <- el "ul" $ simpleList receivedMessages $ \m -> el "li" $ dynText =<< mapDyn (T.unpack . decodeUtf8) m
+  _ <- el "ul" $ simpleList receivedMessages $ \m -> el "li" $ dynText $ fmap decodeUtf8 m
   footer
 
-linkNewTab :: MonadWidget t m => String -> String -> m ()
+linkNewTab :: MonadWidget t m => T.Text -> T.Text -> m ()
 linkNewTab href s = elAttr "a" ("href" =: href <> "target" =: "_blank") $ text s
 
 header :: MonadWidget t m => m ()

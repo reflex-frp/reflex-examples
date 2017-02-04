@@ -1,4 +1,5 @@
 {-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
@@ -11,6 +12,8 @@ import           Control.DeepSeq
 import           Control.Monad.IO.Class
 import           Data.Array
 import           Data.Map      (Map, fromList)
+import           Data.Monoid ((<>))
+import qualified Data.Text as T
 
 import           Reflex
 import           Reflex.Dom
@@ -32,12 +35,12 @@ setup = el "div" $ do
       wm <- performEventAsync $ fmap computeAiMove
                               . ffilter ((==White) . player)
                               $ attachWith (flip mkMove) (current g) bm
-      dynText =<< mapDyn ((++"'s move") . show . player) g
+      dynText $ fmap ((<>"'s move") . T.pack . show . player) g
       g <- foldDyn mkMove newGame (leftmost [wm, bm])
   return ()
 
 -- | A button whose color is based on the game state.
-buttonDynAttr :: MonadWidget t m => Dynamic t (Map String String) -> m (Event t ())
+buttonDynAttr :: MonadWidget t m => Dynamic t (Map T.Text T.Text) -> m (Event t ())
 buttonDynAttr attrs = do
   (e, _) <- elDynAttr' "button" attrs (text "")
   return $ domEvent Click e
@@ -47,16 +50,16 @@ buttonDynAttr attrs = do
 --   the Position of the square when the black player clicks on it.
 squareWidget :: (MonadWidget t m) => Dynamic t Game -> Position ->  m (Event t Input)
 squareWidget gameDyn coords = do
-  rec b     <- buttonDynAttr attrs
-      attrs <- mapDyn (\r -> case ((board r) ! coords) of
+  let attrs = fmap (\r -> case ((board r) ! coords) of
         Empty -> mkStyle "green"
         Black -> mkStyle "black"
         White -> mkStyle "white") gameDyn
+  b <- buttonDynAttr attrs
   return $ fmap (const (BlackMove coords)) b
   where
     mkStyle c = fromList
-      [ ("style", "outline: none; background-color: " ++
-        c ++ "; font-size: 40px; height: 60px; width: 60px") ]
+      [ ("style", "outline: none; background-color: " <>
+        c <> "; font-size: 40px; height: 60px; width: 60px") ]
 
 -- | Get the nth row of squares from the list of squares.
 row :: (MonadWidget t m) => Dynamic t Game -> Int -> m [Event t Input]

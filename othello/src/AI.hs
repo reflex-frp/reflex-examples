@@ -52,8 +52,8 @@ cutoff :: Int -> GameTree -> GameTree
 cutoff 0 (Node g _) = Node g []
 cutoff n (Node g gs) = Node g (map (cutoff (n - 1)) gs)
 
-aiMove :: Int -> Square -> Game -> Game
-aiMove n p g = move (snd best) g
+aiMove :: Int -> Game -> Game
+aiMove n g = move (snd best) g
   where
     gt = cutoff n . gameTree
     ms = legalMoves g

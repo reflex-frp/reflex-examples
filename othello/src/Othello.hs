@@ -74,5 +74,5 @@ computeAiMove :: MonadIO m => Game -> (Input -> IO ()) -> m ()
 computeAiMove g cb = liftIO $ do
   _ <- forkIO $ do
     -- threadDelay 1000000 -- Add a delay here if necessary
-    cb $!! WhiteMove $ aiMove 2 White g -- Fully evaluate before triggering the callback
+    cb $!! WhiteMove $ aiMove 2 g -- Fully evaluate before triggering the callback
   return ()

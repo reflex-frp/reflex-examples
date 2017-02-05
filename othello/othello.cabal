@@ -1,5 +1,5 @@
 Name:                othello
-Version:             0.1.0.0
+Version:             0.1.1.0
 Synopsis:            othello in reflex-dom
 Homepage:            https://github.com/jeffreyrosenbluth/Othello
 License:             BSD3
@@ -26,8 +26,9 @@ Executable othello
                        split,
                        containers,
                        reflex,
-                       reflex-dom,
+                       reflex-dom >= 0.4,
                        deepseq,
+                       text,
                        transformers
   hs-source-dirs:      src
   other-modules:       Types, Game, AI

@@ -1,10 +1,10 @@
 { mkDerivation, reflex, reflex-dom, file-embed, array, containers, split,
-  deepseq, transformers
+  deepseq, text, transformers
 }:
 
 mkDerivation {
-  pname = "peg-solitairec";
-  version = "0.1";
+  pname = "othello";
+  version = "0.1.1";
   src = builtins.filterSource (path: type: baseNameOf path != ".git") ./.;
   isExecutable = true;
   buildDepends = [
@@ -15,6 +15,7 @@ mkDerivation {
     reflex-dom
     file-embed
     deepseq
+    text
     transformers
   ];
   license = null;

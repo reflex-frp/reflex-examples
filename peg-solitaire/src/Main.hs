@@ -1,15 +1,16 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecursiveDo      #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell  #-}
 
 module Main where
 
-import Data.Array.IArray
-import Data.FileEmbed
-import Data.Monoid         ((<>))
+import           Data.Array.IArray
+import           Data.FileEmbed
+import           Data.Monoid         ((<>))
+import qualified Data.Text as T
 
-import Reflex
-import Reflex.Dom
+import           Reflex.Dom
 
 --------------------------------------------------------------------------------
 -- Model
@@ -22,7 +23,7 @@ data Trool = Yes | Idk | No deriving (Eq)
 
 type Board = Array Point Trool
 
--- | If the user chooses an amibuous starting point we need to remember it
+-- | If the user chooses an amibguous starting point we need to remember it
 --   so that when the destination is chosen we know what the move was.
 data GameState = GameState {board :: Board, start :: Maybe Point}
 
@@ -56,7 +57,7 @@ main = mainWidgetWithCss ( $(embedFile "static/css/normalize.css")
         rec gs  <- foldDyn move initialState pos
             pos <- mkBoard gs
             elAttr "h3" ("style" =: "text-align: center") $
-                    dynText =<< mapDyn (\g -> "Score: " ++ (show $ score g)) gs
+                    dynText =<< (return . fmap (\g -> "Score: " <> ((T.pack . show) $ score g))) gs
         return ()
     footer
 
@@ -91,8 +92,8 @@ move p gs = case (start gs, length lm) of
 -- | Create a game cell that returns it's coordinates when clicked.
 cell :: MonadWidget t m => (Dynamic t GameState) -> Point -> m (Event t Point)
 cell gs p = el "td" $ do
-    rec (e, _) <- elDynAttr' "img" attrs (return ())
-        attrs  <- mapDyn (square p . board) gs
+    let attrs = fmap (square p . board) gs
+    (e, _) <- elDynAttr' "img" attrs (return ())
     return $ p <$ domEvent Click e
     where
       square pos bd

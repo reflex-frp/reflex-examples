@@ -1,5 +1,5 @@
 Name: peg-solitaire
-Version: 0.1
+Version: 0.1.1
 Synopsis: Peg Solitaire
 Description: An implementation of Peg Solitaire using the Reflex-DOM functional reactive DOM library
 License: BSD3
@@ -17,7 +17,8 @@ executable peg-solitaire
   build-depends:
     base,
     reflex,
-    reflex-dom,
+    reflex-dom >= 0.4,
+    text,
     file-embed,
     array
 

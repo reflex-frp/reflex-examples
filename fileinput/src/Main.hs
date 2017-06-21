@@ -13,7 +13,7 @@ import Control.Monad.Trans
 import GHCJS.Marshal
 import GHCJS.Types
 import GHCJS.DOM.FileReader
-import GHCJS.DOM.Types (File, UIEvent)
+import GHCJS.DOM.Types (File, UIEvent, liftJSM)
 import GHCJS.DOM.EventM
 
 main :: IO ()
@@ -47,10 +47,10 @@ footer = do
 
 dataURLFileReader :: (MonadWidget t m) => Event t File -> m (Event t Text)
 dataURLFileReader request =
-  do fileReader <- liftIO newFileReader
+  do fileReader <- liftJSM newFileReader
      performEvent_ (fmap (\f -> readAsDataURL fileReader (Just f)) request)
-     e <- wrapDomEvent fileReader (`on` load) . liftIO $ do
+     e <- wrapDomEvent fileReader (`on` load) . liftJSM $ do
        v <- getResult fileReader
-       s <- fromJSVal v
+       s <- (fromJSVal <=< toJSVal) v
        return . fmap T.pack $ s
      return (fmapMaybe id e)

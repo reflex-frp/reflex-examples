@@ -52,5 +52,6 @@ dataURLFileReader request =
      e <- wrapDomEvent fileReader (`on` load) . liftJSM $ do
        v <- getResult fileReader
        s <- (fromJSVal <=< toJSVal) v
-       return . fmap T.pack $ s
+       -- return . fmap T.pack $ s
+       return s
      return (fmapMaybe id e)

@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-set -eu
-
-ghcjs src/Main -o out/Main.jsexe

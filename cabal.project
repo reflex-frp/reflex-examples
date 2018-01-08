@@ -1,0 +1,12 @@
+packages:
+  common/
+  backend/
+  BasicTodo/
+  drag-and-drop/
+  fileinput/
+  nasa-pod/
+  Keyboard/
+  othello/
+  peg-solitaire/
+  websocket-echo/
+  xhr-blob/

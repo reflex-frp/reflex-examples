@@ -20,7 +20,6 @@ Data-files:          static/css/*.css,
 Executable othello
   ghc-options:         -Wall -rtsopts -O2
   main-is:             Othello.hs
-  cpp-options:         -DCABAL
   build-depends:       base,
                        array,
                        split,
@@ -29,7 +28,8 @@ Executable othello
                        reflex-dom >= 0.4,
                        deepseq,
                        text,
-                       transformers
+                       transformers,
+                       jsaddle
   hs-source-dirs:      src
   other-modules:       Types, Game, AI
   default-language:    Haskell2010

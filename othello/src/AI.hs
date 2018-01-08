@@ -1,16 +1,17 @@
 --------------------------------------------------------------------------------------
 -- AI
---------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 module AI where
 
 import           Game
 import           Types
 
+import           Control.Arrow (first)
 import           Data.Array
 import           Data.Function (on)
-import           Data.List     (foldl', maximumBy, minimumBy)
+import           Data.List     (foldl', minimumBy)
 import           Data.Tree
---------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- Order the moves tried to maximize the benefit of alpha-beta pruning.
 abSquares :: [Position]
@@ -27,7 +28,7 @@ abSquares = reverse
             ]
 
 children :: Game -> [Game]
-children g@(Game p b) = map (\s -> move s g) (filter (isLegal b p) abSquares)
+children g@(Game p b) = map (`move` g) (filter (isLegal b p) abSquares)
 
 -------------------------------------------------------------------------------
 -- Minimax
@@ -57,7 +58,8 @@ aiMove n g = move (snd best) g
   where
     gt = cutoff n . gameTree
     ms = legalMoves g
-    scores = map (\(g', s) -> (alphaBeta . gt $ g', s)) ms
+    -- scores = map (\(g', s) -> (alphaBeta . gt $ g', s)) ms
+    scores = map (first (alphaBeta . gt)) ms
     best = minimumBy (compare `on` fst) scores
 
 -------------------------------------------------------------------------------

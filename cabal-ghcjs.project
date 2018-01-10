@@ -11,3 +11,5 @@ packages:
   websocket-echo/
   xhr-blob/
   ws-chat/
+  ws-chat2
+  common-ws-chat2/

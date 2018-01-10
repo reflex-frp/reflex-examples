@@ -86,7 +86,7 @@ Ghcjs version is ok but webkit2gtk version seems to have problems.
 
 ### Othello
 
-See the README.md at othello. As an additionl todo-item, there are png's ready 
+See the README.md at othello. As an additional todo-item, there are png's ready 
 to be applied.
 
 
@@ -112,18 +112,30 @@ Font-error should be fixed.
 
 An example on how to use websocket-api.
 
+
+
 ### Simple Websocket Chat
+
+Simple websocket chats come with two flavours. 
+
+#### Simple ws chat 1
 
 This uses backend-ws-chat and ws-chat. This is a modification of websocket 
 echo example and the example at 
 [websockets](https://github.com/jaspervdj/websockets) library.
 
 How to use:
-- start then ws-serber (backendwschat somewhere in the dist-newstyle-dir)
+- start then ws-server (backendwschat somewhere in the dist-newstyle-dir)
 - start frontend (webkit2gtk version works, that is, wschat somewhere in dist-newstyle dir)
 
 
-TODO: extend a bit to show how to apply common-lib.
+#### Simple ws chat 2
+
+This extends the first example and show the common (common-ws-chat2) lib in 
+action. In addition to that, the focus is set into the input fields.
+
+Remember to try the webkit2gtk version of the chat at the same time with 
+js-version. Server, chat and common lib names end with "2".
 
 
 ### Xhr Blob

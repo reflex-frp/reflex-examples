@@ -9,10 +9,13 @@ import           Data.Maybe                (fromMaybe)
 import           Data.Monoid               ((<>))
 import qualified GHCJS.DOM.DataTransfer    as DOM
 import qualified GHCJS.DOM.HTMLElement     as DOM
+import qualified GHCJS.DOM.Element         as DOM
 import qualified GHCJS.DOM.EventM          as DOM
 import qualified GHCJS.DOM.GlobalEventHandlers as DOM
 import qualified GHCJS.DOM.MouseEvent      as DOM
 import qualified GHCJS.DOM.Types           as DOM (uncheckedCastTo)
+
+-- import qualified GHC.IORef
 
 -- import qualified JSDOM.HTMLElement         as DOM
 -- import qualified JSDOM.DataTransfer        as DOM

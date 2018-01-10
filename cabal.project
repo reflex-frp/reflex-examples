@@ -10,3 +10,5 @@ packages:
   peg-solitaire/
   websocket-echo/
   xhr-blob/
+  backend-ws-chat/
+  ws-chat/

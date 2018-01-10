@@ -103,7 +103,7 @@ app :: forall t m. MonadWidget t m => m ()
 app = title >> testXhrResponseBody >> testXhrResponseText
 
 myHost :: T.Text
--- myHost = "."
+myHost = "."
 -- myHost = "http://localhost:8000"
 -- myHost = "http://192.168.0.x:8000"
 

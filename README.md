@@ -2,7 +2,16 @@
 
 ## How to Compile?
 
-To build with GHC, use the nix-shell command to enter the sandbox shell and use cabal (which is supplied by the sandbox):
+First, get the repo with `git clone` and after that make sure that the 
+reflex-platform is in place:
+
+```
+$ git submodule update --init --recursive
+```
+
+
+To build with GHC, use the nix-shell command to enter the sandbox shell and 
+use cabal (which is supplied by the sandbox):
 
 ```
 $ nix-shell -A shells.ghc
@@ -16,14 +25,26 @@ $ nix-shell -A shells.ghcjs
 [nix-shell:~/path]$ cabal --project-file=cabal-ghcjs.project --builddir=dist-ghcjs new-build all
 ```
 
+For further information, check the instructions on 
+[project-development](https://github.com/reflex-frp/reflex-platform/blob/develop/docs/project-development.md)
+and 
+[project-skeleton](https://github.com/ElvishJerricco/reflex-project-skeleton).
+
+
 ## About the Examples
 
 ### Basic Todo
+
+An example on how to use listWithKey, textInput and mergeWith to implement
+a basic todo-list application.
 
 ghcjs ok, webkit2gtk ok.
 
 
 ### Drag and Drop
+
+An example on how to apply dom-api and wrapDomEvent to implement a basic drag 
+and drop functionality. 
 
 GHCJS:
 Note that the arduino.jpg should be either in the directory containing index.html 
@@ -33,16 +54,28 @@ Webkit2gtk:
 Note that the arduino.jpg should be in the directory the program is started.
 
 
-
 ### File Input
 
-Webkit2gtk-version starts but gives "GLib-GIO-Error: No GSettings schemas are installed on the system Trace/breakpoint trap."
+Another example on how to apply dom-api. 
+
+ghcjs ok.  Webkit2gtk-version starts but gives "GLib-GIO-Error: No GSettings schemas are installed on the system Trace/breakpoint trap."
+
 
 ### Keyboard
 
+An example on how to keep focus on textInput. It uses dom-api.
+
+ghcjs ok, webkit2gtk ok.
+
+
 ### Nasa Pod
 
+An example on how to use Xhr-api.
+
 See the README.md at nasa-pod.
+
+Ghcjs version is ok but webkit2gtk version seems to have problems.
+
 
 ### Othello
 
@@ -51,6 +84,9 @@ to be applied.
 
 
 ### Peg Solitaire
+
+This uses embedFile to add css-files to the generated code.
+
 
 GHCJS:
 The svgs are in static/images -directory. You could, e.g., copy the 
@@ -64,10 +100,12 @@ images if started elsewhere.
 
 Font-error should be fixed. 
 
+
 ### Websocket Echo
 
-### Xhr Blob
+An example on how to use websocket-api.
 
+### Xhr Blob
 
 GHCJS:
 - Copy the xhrblob.jsexe-diroctory to xhr-blob/out -directory.
@@ -83,10 +121,9 @@ To try the following, you should take a look of the code and uncomment couple
 of lines.
 
 Webkit2gtk:
-If trying to access the file directly:
+- If trying to access the file directly:
 file:///home/.../reflex-examples/:243:76: CONSOLE ERROR XMLHttpRequest cannot load file:///home/.../reflex-examples/out.stats. Cross origin requests are only supported for HTTP.
-
-If serving files with web-server (fix this):
+- If serving files with web-server (fix this):
 CONSOLE ERROR Origin null is not allowed by Access-Control-Allow-Origin.
 CONSOLE ERROR XMLHttpRequest cannot load http://localhost/out.stats due to access control checks.
 

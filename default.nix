@@ -13,6 +13,9 @@
     pegsolitaire = ./peg-solitaire;
     websocketecho = ./websocket-echo;
     xhrblob = ./xhr-blob;
+    wschat = ./ws-chat;
+    /* commonwschat = ./common-ws-chat; */
+    backendwschat = ./backend-ws-chat;
   };
 
   /* android.frontend = { */
@@ -30,9 +33,11 @@
   shells = {
     ghc = ["keyboard" "basictodo" "draganddrop" "fileinput" "nasapod"
         "othello" "pegsolitaire" "websocketecho" "xhrblob"
+        "wschat" "backendwschat"
     ];
     ghcjs = ["keyboard" "basictodo" "draganddrop" "fileinput" "nasapod"
         "othello" "pegsolitaire" "websocketecho" "xhrblob"
+        "wschat"
     ];
     /* ghc = ["frontend"]; */
     /* ghcjs = ["frontend"]; */
@@ -42,7 +47,7 @@
   tools = ghc: with ghc; [
     pkgs.haskellPackages.ghc-mod
     pkgs.haskellPackages.hasktags
-    pkgs.haskellPackages.haskdogs  
+    pkgs.haskellPackages.haskdogs
     pkgs.haskellPackages.hdevtools
     pkgs.haskellPackages.hindent
     pkgs.haskellPackages.hsimport

@@ -35,7 +35,8 @@ linkNewTab href s = elAttr "a" ("href" =: href <> "target" =: "_blank") $ text s
 header :: MonadWidget t m => m ()
 header = do
   el "strong" $ do
-    linkNewTab "https://github.com/ryantrinkle/reflex-dom" "Reflex.Dom"
+    linkNewTab
+        "https://github.com/reflex-frp/reflex-platform/reflex-dom" "Reflex.Dom"
     text " WebSocket test page"
   el "p" $ do
     text "Send a message to the "

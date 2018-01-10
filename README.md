@@ -15,15 +15,22 @@ use cabal (which is supplied by the sandbox):
 
 ```
 $ nix-shell -A shells.ghc
-[nix-shell:~/path]$ cabal new-build all
+$ cabal new-build all
 ```
 
 To build with GHCJS:
 
 ```
 $ nix-shell -A shells.ghcjs
-[nix-shell:~/path]$ cabal --project-file=cabal-ghcjs.project --builddir=dist-ghcjs new-build all
+$ cabal --project-file=cabal-ghcjs.project --builddir=dist-ghcjs new-build all
 ```
+
+You can also build examples separately by replacing all with exe:name, e.g.
+```
+$ cabal new-build exe:othello
+$ cabal --project-file=cabal-ghcjs.project --builddir=dist-ghcjs new-build exe:othello
+```
+
 
 For further information, check the instructions on 
 [project-development](https://github.com/reflex-frp/reflex-platform/blob/develop/docs/project-development.md)

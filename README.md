@@ -105,6 +105,20 @@ Font-error should be fixed.
 
 An example on how to use websocket-api.
 
+### Simple Websocket Chat
+
+This uses backend-ws-chat and ws-chat. This is a modification of websocket 
+echo example and the example at 
+[websockets](https://github.com/jaspervdj/websockets) library.
+
+How to use:
+- start then ws-serber (backendwschat somewhere in the dist-newstyle-dir)
+- start frontend (webkit2gtk version works, that is, wschat somewhere in dist-newstyle dir)
+
+
+TODO: extend a bit to show how to apply common-lib.
+
+
 ### Xhr Blob
 
 GHCJS:

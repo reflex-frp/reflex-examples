@@ -2,8 +2,8 @@
 
 ## How to Compile?
 
-First, get the repo with `git clone` and after that make sure that the 
-reflex-platform is in place:
+First, get the repo with `git clone` and `cd` into the directory, and 
+after that make sure that the reflex-platform is in place:
 
 ```
 $ git submodule update --init --recursive

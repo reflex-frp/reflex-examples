@@ -11,4 +11,3 @@ packages:
   websocket-echo/
   xhr-blob/
   ws-chat/
-  backend-ws-chat/

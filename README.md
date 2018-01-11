@@ -1,5 +1,26 @@
 # Reflex Examples
 
+Depending on example, the executable or library can be compiled either with ghc 
+or ghcjs, or both. One of the aims of the "project"-setup is to allow frontend 
+code to be compiled separately from the backend code, and to have a common library
+enabling communication between the front and back. As the library is written
+in Haskell, too, that is, with language frontend and backend use, the 
+communication is easy to setup. That is, it is easy to share common 
+data-structures and functions operating on them between front and back.
+
+This means, as the frontend can be ghcjs, webkit2gtk, android and ios, the 
+compiler and associated tools can vary from that of backend and backend code
+is not typically compiled in the frontend environment.
+
+The project-setup of this repo demonstrates, how to setup enviroments for
+the frontend, common parts and backend. Especially, the `default.nix`-file
+should correspond with the `cabal.project` and `cabal-ghcjs.project` files.
+
+Most of the examples are only meant for the frontend usage without any
+backend functionality. The simple websocket chat -example below demonstrates
+frontend/common/backend functionality.
+
+
 ## How to Compile?
 
 First, get the repo with `git clone` and `cd` into the directory, and 
@@ -31,12 +52,20 @@ $ cabal new-build exe:othello
 $ cabal --project-file=cabal-ghcjs.project --builddir=dist-ghcjs new-build exe:othello
 ```
 
-
 For further information, check the instructions on 
 [project-development](https://github.com/reflex-frp/reflex-platform/blob/develop/docs/project-development.md)
 and 
 [project-skeleton](https://github.com/ElvishJerricco/reflex-project-skeleton).
 
+## Before Trying Out
+
+If you haven't read the following yet, they help to build up a mental image 
+what is going on:
+
+- [The reflex introduction](https://blog.qfpl.io/posts/reflex/basics/introduction/). 
+- [Beginner Friendly Step by Step Tutorial for Reflex-Dom](https://github.com/hansroland/reflex-dom-inbits/blob/master/tutorial.md)
+- [Real World Reflex](https://github.com/mightybyte/real-world-reflex/blob/master/index.md)
+- Other [docs](http://docs.reflex-frp.org/en/latest/)
 
 ## About the Examples
 
@@ -86,8 +115,11 @@ Ghcjs version is ok but webkit2gtk version seems to have problems.
 
 ### Othello
 
-See the README.md at othello. As an additional todo-item, there are png's ready 
-to be applied.
+See the README.md at othello. 
+
+Note that there is a static directory containing png's. At the moment they 
+are not used in the program. It makes a nice exercise to add them (so that they
+work with both js and webkit2gtk).
 
 
 ### Peg Solitaire
@@ -116,7 +148,16 @@ An example on how to use websocket-api.
 
 ### Simple Websocket Chat
 
-Simple websocket chats come with two flavours. 
+Simple websocket chats come with two flavours. Note that the clients (ws-chats) 
+can be compiled with both ghc and ghcjs together with the common parts, while
+the backend servers (backend-ws-chats) use ghc only.
+
+Note also that the `default.nix` sets the environments so that backends are 
+only build with ghc and the front can be build with both ghc and ghcjs. The 
+`cabal.project` and `cabal-ghcjs.project` have similar separation: failing to
+do that can lead to trying to build and link your z-lib to snap-server with
+ghcjs and seeing it to not work after one hour or so.
+
 
 #### Simple ws chat 1
 
@@ -161,3 +202,22 @@ CONSOLE ERROR Origin null is not allowed by Access-Control-Allow-Origin.
 CONSOLE ERROR XMLHttpRequest cannot load http://localhost/out.stats due to access control checks.
 
 
+## TODO list
+
+There are some todo-items scattered in the code. Many of the examples could
+benefit with some little additions and detailed explanations of what is
+happening and why things are implemented in the way they are (and is there
+alternatives).
+
+
+Here are random ideas that could have examples, too:
+
+- an example of runEventWriter and its usage
+- a host example
+- how to set cors policy with pointers for the server side 
+- debuggind aids (tracing, how to write to console, etc)
+- where to find api-docs (on nixos), 
+  how to control the hoogle-building for you own modules
+- more learning aids, like good links to fix/mfix explanations and how to 
+  recognize when the laziness is lost with fix/mfix
+- when to use jsaddle libs (import JSDOM) and when ghcjs (import GHCJS.DOM)

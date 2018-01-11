@@ -4,11 +4,11 @@ Depending on example, the executable or library can be compiled either with ghc
 or ghcjs, or both. One of the aims of the "project"-setup is to allow frontend 
 code to be compiled separately from the backend code, and to have a common library
 enabling communication between the front and back. As the library is written
-in Haskell, too, that is, with language frontend and backend use, the 
-communication is easy to setup. That is, it is easy to share common 
+in Haskell, too, that is, the same language frontend and backend use, the 
+communication is easy to setup. It is easy to share common 
 data-structures and functions operating on them between front and back.
 
-This means, as the frontend can be ghcjs, webkit2gtk, android and ios, the 
+As the frontend can be ghcjs, webkit2gtk, android and ios, the 
 compiler and associated tools can vary from that of backend and backend code
 is not typically compiled in the frontend environment.
 

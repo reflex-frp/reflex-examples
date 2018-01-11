@@ -61,7 +61,7 @@ and
 Note that if you have already obtained examples but want to update the
 reflex-platform, you can try, e.g., 
 ```
-git submodule foreach "(git checkout master; git pull --recurse-submodules)&"
+git submodule foreach "(git checkout develop; git pull --recurse-submodules)&"
 ```
 
 

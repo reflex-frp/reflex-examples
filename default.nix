@@ -20,17 +20,17 @@
     backendwschat2 = ./backend-ws-chat2;
   };
 
-  /* android.frontend = { */
-  /*   executableName = "frontend"; */
-  /*   applicationId = "org.example.frontend"; */
-  /*   displayName = "Example Android App"; */
-  /* }; */
+  android.keyboard = {
+    executableName = "keyboard";
+    applicationId = "org.example.keyboard";
+    displayName = "Example Android App (keyboard ex)";
+  };
 
-  /* ios.frontend = { */
-  /*   executableName = "frontend"; */
-  /*   bundleIdentifier = "org.example.frontend"; */
-  /*   bundleName = "Example iOS App"; */
-  /* }; */
+  ios.frontend = {
+    executableName = "keyboard";
+    bundleIdentifier = "org.example.keyboard";
+    bundleName = "Example iOS App (keyboard ex)";
+  };
 
   shells = {
     ghc = ["keyboard" "basictodo" "draganddrop" "fileinput" "nasapod"

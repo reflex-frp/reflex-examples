@@ -1,5 +1,10 @@
 # Revision history for reflex-examples
 
+## 2018-01-11
+
+* Update README
+* Update reflex-platform submodule
+
 ## 2018-01-10
 
 * Cabal file reorganization

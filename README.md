@@ -57,6 +57,14 @@ For further information, check the instructions on
 and 
 [project-skeleton](https://github.com/ElvishJerricco/reflex-project-skeleton).
 
+
+Note that if you have already obtained examples but want to update the
+reflex-platform, you can try, e.g., 
+```
+git submodule foreach "(git checkout master; git pull --recurse-submodules)&"
+```
+
+
 ## Before Trying Out
 
 If you haven't read the following yet, they help to build up a mental image 

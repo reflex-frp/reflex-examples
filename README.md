@@ -111,6 +111,20 @@ An example on how to keep focus on textInput. It uses dom-api.
 
 ghcjs ok, webkit2gtk ok.
 
+The `default.nix` has an attributes ready for android and iOS compilation:
+
+```
+$ nix-build -o android-keyboard -A android.keyboard
+$ nix-build -o ios-keyboard -A ios.keyboard
+```
+
+Directory android-keyboard contains `android-app-debug.apk` that you can use 
+on your device. 
+E.g.
+- use `adb install <apk-file>` 
+- or just copy the apk-file to your device and install it there
+
+
 
 ### Nasa Pod
 
@@ -121,6 +135,12 @@ See the README.md at nasa-pod.
 Ghcjs version is ok but webkit2gtk version seems to have problems.
 
 
+The `default.nix` has an attributes ready for android compilation:
+
+```
+$ nix-build -o android-nasapod -A android.nasapod
+```
+
 ### Othello
 
 See the README.md at othello. 
@@ -128,6 +148,13 @@ See the README.md at othello.
 Note that there is a static directory containing png's. At the moment they 
 are not used in the program. It makes a nice exercise to add them (so that they
 work with both js and webkit2gtk).
+
+The `default.nix` has an attributes ready for android compilation:
+
+```
+$ nix-build -o android-othello -A android.othello
+```
+
 
 
 ### Peg Solitaire

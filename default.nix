@@ -23,10 +23,20 @@
   android.keyboard = {
     executableName = "keyboard";
     applicationId = "org.example.keyboard";
-    displayName = "Example Android App (keyboard ex)";
+    displayName = "Example Keyboard App";
+  };
+  android.othello = {
+    executableName = "othello";
+    applicationId = "org.example.othello";
+    displayName = "Example Othello App";
+  };
+  android.nasapod = {
+    executableName = "nasapod";
+    applicationId = "org.example.nasapod";
+    displayName = "Example Nasapod App";
   };
 
-  ios.frontend = {
+  ios.keyboard = {
     executableName = "keyboard";
     bundleIdentifier = "org.example.keyboard";
     bundleName = "Example iOS App (keyboard ex)";

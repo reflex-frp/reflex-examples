@@ -1,5 +1,10 @@
 # Revision history for reflex-examples
 
+## 2018-01-12
+
+* Update README
+* Updated all examples to use ghcjs-dom and GHCJS.DOM in the imports.
+
 ## 2018-01-11
 
 * Update README

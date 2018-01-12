@@ -15,7 +15,6 @@ executable draganddrop
                      , reflex-dom
                      , reflex-dom-core
                      , jsaddle
-                     , jsaddle-dom
                      -- , jsaddle-warp
   hs-source-dirs:      src
   default-language:    Haskell2010

@@ -17,7 +17,6 @@ executable xhrblob
                      , reflex-dom
                      , reflex-dom-core
                      , jsaddle
-                     , jsaddle-dom
                      -- , gi-webkit2
                      -- , webkit2gtk3-javascriptcore
                      -- , jsaddle-warp

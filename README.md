@@ -63,12 +63,13 @@ reflex-platform, you can try, e.g.,
 ```
 git submodule foreach "(git checkout develop; git pull --recurse-submodules)&"
 ```
+(Note that the above command gets the develop-branch of the platform.)
 
 
 ## Before Trying Out
 
 If you haven't read the following yet, they help to build up a mental image 
-what is going on:
+on what is going on:
 
 - [The reflex introduction](https://blog.qfpl.io/posts/reflex/basics/introduction/). 
 - [Beginner Friendly Step by Step Tutorial for Reflex-Dom](https://github.com/hansroland/reflex-dom-inbits/blob/master/tutorial.md)
@@ -81,8 +82,6 @@ what is going on:
 
 An example on how to use listWithKey, textInput and mergeWith to implement
 a basic todo-list application.
-
-ghcjs ok, webkit2gtk ok.
 
 
 ### Drag and Drop
@@ -108,8 +107,6 @@ ghcjs ok.  Webkit2gtk-version starts but gives "GLib-GIO-Error: No GSettings sch
 ### Keyboard
 
 An example on how to keep focus on textInput. It uses dom-api.
-
-ghcjs ok, webkit2gtk ok.
 
 The `default.nix` has an attributes ready for android and iOS compilation:
 
@@ -147,7 +144,7 @@ See the README.md at othello.
 
 Note that there is a static directory containing png's. At the moment they 
 are not used in the program. It makes a nice exercise to add them (so that they
-work with both js and webkit2gtk).
+work with both ghcjs and webkit2gtk).
 
 The `default.nix` has an attributes ready for android compilation:
 
@@ -249,10 +246,11 @@ Here are random ideas that could have examples, too:
 
 - an example of runEventWriter and its usage
 - a host example
-- how to set cors policy with pointers for the server side 
 - debuggind aids (tracing, how to write to console, etc)
+- how to debug when using different backends (like webkit2gtk)
 - where to find api-docs (on nixos), 
   how to control the hoogle-building for you own modules
 - more learning aids, like good links to fix/mfix explanations and how to 
   recognize when the laziness is lost with fix/mfix
-- when to use jsaddle libs (import JSDOM) and when ghcjs (import GHCJS.DOM)
+- how to set cors policy with pointers for the server side 
+

@@ -1,26 +1,21 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE JavaScriptFFI       #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-import           Control.Monad            ((<=<))
-import           Control.Monad.IO.Class   (liftIO)
-import qualified Data.Text                as T
-import           Data.Semigroup           ((<>))
-import           Reflex.Dom               hiding (mainWidget)
-import           Reflex.Dom.Core          (mainWidget)
+import           Control.Monad               ((<=<))
+import           Control.Monad.IO.Class      (liftIO)
+import           Data.Semigroup              ((<>))
+import qualified Data.Text                   as T
+import qualified GHCJS.DOM.Types             as G (Blob, JSString, JSVal,
+                                                   fromJSVal, liftJSM, toJSVal)
+import           GHCJS.DOM.URL               (createObjectURL, newURL)
+import           Reflex.Dom                  hiding (mainWidget)
+import           Reflex.Dom.Core             (mainWidget)
 
-import Language.Javascript.JSaddle
-import Language.Javascript.JSaddle.String (textFromJSString)
+import           Language.Javascript.JSaddle
 
-import qualified JSDOM.Types as G (liftJSM, fromJSVal, toJSVal
-  , JSVal, JSString, Blob)
-import           JSDOM.URL (newURL, createObjectURL)
--- import qualified GHCJS.DOM.Types as G (liftJSM, fromJSVal, toJSVal
---   , JSVal, JSString, Blob)
--- import           GHCJS.DOM.URL (newURL, createObjectURL)
-
-
+--------------------------------------------------------------------------------
 -- From the old version:
 -- #ifdef ghcjs_HOST_OS
 -- import           GHCJS.Foreign
@@ -77,6 +72,7 @@ import           JSDOM.URL (newURL, createObjectURL)
 --
 --  rval = receives the result value
 
+--------------------------------------------------------------------------------
 
 -- GHCJS javascript FFI binding of window.URL.createObjectURL
 #ifdef ghcjs_HOST_OS
@@ -85,7 +81,7 @@ foreign import javascript unsafe
         :: G.JSVal -> IO G.JSString
 #else
 createObjectURL2_ :: G.JSVal -> IO G.JSString
-createObjectURL2_ _ = return undefined
+createObjectURL2_ _ = pure undefined
 #endif
 
 createObjectURL2 :: G.Blob -> JSM T.Text
@@ -94,6 +90,7 @@ createObjectURL2 b = do
     cou <- liftIO $ createObjectURL2_ jv
     pure $ textFromJSString cou
 
+--------------------------------------------------------------------------------
 
 main :: IO ()
 main = run $ mainWidget app
@@ -102,9 +99,11 @@ app :: forall t m. MonadWidget t m => m ()
 -- app = title >> testXhrResponseText
 app = title >> testXhrResponseBody >> testXhrResponseText
 
+--------------------------------------------------------------------------------
+
 myHost :: T.Text
-myHost = "."
--- myHost = "http://localhost:8000"
+-- myHost = "."
+myHost = "http://localhost:8000"
 -- myHost = "http://192.168.0.x:8000"
 
 testXhrResponseText :: forall t m. MonadWidget t m => m ()
@@ -117,7 +116,7 @@ testXhrResponseText = do
             $ performRequestAsync
             $ XhrRequest "GET" (myHost <> "/out.stats") def <$ pb
   dynText <=< holdDyn "" $ fmapMaybe id rt
-  el "hr" $ return ()
+  el "hr" blank
 
 
 testXhrResponseBody :: forall t m. (HasWebView m, MonadWidget t m) => m ()
@@ -125,19 +124,14 @@ testXhrResponseBody = do
   pb <- getPostBuild
   header "_xhrResponse_response test"
     "Sets responseType to 'blob', retrieves test.jpg, and displays response blob"
-  el "hr" $ return ()
-
-  -- From the older version:
-  -- wv <- askWebView -- JavaScriptCore requires a JS context to run FFI calls.
-  -- This context can be derived from the WebView.
+  el "hr" blank
 
   let imgReq = XhrRequest "GET" (myHost <> "/test.jpg")
             $ def { _xhrRequestConfig_responseType = Just XhrResponseType_Blob }
   ri :: Event t (Maybe XhrResponseBody) <- fmap (fmap _xhrResponse_response)
             $ performRequestAsync $ imgReq <$ pb
   text "use XhrResponseBody and jsffi"
-  -- url <- U.newURL ("./test.jpg" :: T.Text) -- this fails
-  url <- newURL (myHost <> "/test.jpg")
+  -- url <- newURL (myHost <> "/test.jpg")
   _ <- el "div" . widgetHold (text "body is empty / no ev?") . ffor ri
     $ \mb -> do
         mbb <- G.liftJSM $ fromXhrRB2 mb
@@ -145,11 +139,16 @@ testXhrResponseBody = do
             case mbb of
                 Just b -> do
                     -- co <- createObjectURL url b
-                    -- The above one compiles but doesn't work with ghcjs.
-                    -- Console says something about undefined etc. wiht JSDOM.
-                    -- With GHCJS.DOM console says the it is not a function.
+                    -- The above one compiles but doesn't work with webkit2gtk.
+                    -- Webkit2gtk says a javascript exception (may not reach
+                    -- Haskell code) or gives a CORS-error.
+                    -- Note that the newURL above is part of this (it seems to
+                    -- crash if not given a full url/path).
+                    -- Remember to serve the files and point your browser to
+                    -- http://localhost:8000.
                     --
                     co <- G.liftJSM $ createObjectURL2 b
+                    -- The above is only for ghcjs at the moment.
                     pure $ Just co
                 Nothing -> pure Nothing
         case mImgUrl of
@@ -163,16 +162,18 @@ testXhrResponseBody = do
           G.liftJSM $ (G.fromJSVal <=< G.toJSVal) b
       fromXhrRB2 _ = pure Nothing
 
+--------------------------------------------------------------------------------
 
 title :: forall t m. MonadWidget t m => m ()
 title = do
   el "h1" $ text "Reflex.Dom XhrResponseBody Test"
-  el "hr" $ return ()
+  el "hr" blank
 
 header :: MonadWidget t m => T.Text -> T.Text -> m ()
 header h2 p = do
   el "h2" $ text h2
   el "p" $ text p
-  el "hr" $ return ()
+  el "hr" blank
+
 
 

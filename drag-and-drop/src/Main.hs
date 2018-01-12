@@ -15,15 +15,6 @@ import qualified GHCJS.DOM.GlobalEventHandlers as DOM
 import qualified GHCJS.DOM.MouseEvent      as DOM
 import qualified GHCJS.DOM.Types           as DOM (uncheckedCastTo)
 
--- import qualified GHC.IORef
-
--- import qualified JSDOM.HTMLElement         as DOM
--- import qualified JSDOM.DataTransfer        as DOM
--- import qualified JSDOM.Element             as DOM
--- import qualified JSDOM.GlobalEventHandlers as DOM
--- import qualified JSDOM.EventM              as DOM
--- import qualified JSDOM.MouseEvent          as DOM
--- import qualified JSDOM.Types               as DOM (uncheckedCastTo)
 import           Language.Javascript.JSaddle
 import           Reflex.Dom                  hiding (mainWidget)
 import           Reflex.Dom.Core             (mainWidget)

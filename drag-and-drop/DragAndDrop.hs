@@ -9,8 +9,8 @@ import Control.Monad (when)
 import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import qualified GHCJS.DOM.DataTransfer as DOM
-import qualified GHCJS.DOM.Element as DOM
 import qualified GHCJS.DOM.EventM as DOM
+import qualified GHCJS.DOM.GlobalEventHandlers as DOM
 import qualified GHCJS.DOM.MouseEvent as DOM
 import GHCJS.Types (JSString)
 import Reflex.Dom
@@ -24,7 +24,7 @@ theWidget = do
     let draggable :: m (El t, ()) -> String -> m ()
         draggable element attachment = do
           dragsite <- fst <$> element
-          dragStartEvent <- wrapDomEvent (_el_element dragsite) (`DOM.on` DOM.dragStart) $ do
+          dragStartEvent <- wrapDomEvent (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dragsite) (`DOM.on` DOM.dragStart) $ do
             dt <- fromMaybe (error "no dt?") <$> (DOM.getDataTransfer =<< DOM.event)
             DOM.setEffectAllowed dt ("all" :: JSString)
             DOM.setDropEffect dt ("move" :: JSString)
@@ -47,8 +47,8 @@ theWidget = do
                     DOM.EventM e DOM.MouseEvent ()
         ddEvent_ op = ddEvent (const op)
 
-    dragEnterEvent <- wrapDomEvent (_el_element dropsite) (`DOM.on` DOM.dragEnter) (ddEvent_ DOM.preventDefault)
-    dragLeaveEvent <- wrapDomEvent (_el_element dropsite) (`DOM.on` DOM.dragLeave) (ddEvent_ $ return ())
+    dragEnterEvent <- wrapDomEvent (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dropsite) (`DOM.on` DOM.dragEnter) (ddEvent_ DOM.preventDefault)
+    dragLeaveEvent <- wrapDomEvent (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dropsite) (`DOM.on` DOM.dragLeave) (ddEvent_ $ return ())
 
     dropsite <- fst <$> (elDynAttr' "div" dropsiteAttrs $ dynText dropText)
     inDrop <- holdDyn False (leftmost [True <$ dragEnterEvent, False <$ dragLeaveEvent, False <$ dropEvent])
@@ -56,10 +56,10 @@ theWidget = do
     dropsiteAttrs <- forDyn inDrop $ \case
       True -> "style" =: "border:1em solid blue;padding:2em;margin:2em;background-color:green;"
       False -> "style" =: "border:1em solid blue;padding:2em;margin:2em;"
-    dragOverEvent <- wrapDomEvent (_el_element dropsite) (`DOM.on` DOM.dragOver) (ddEvent_ DOM.preventDefault)
+    dragOverEvent <- wrapDomEvent (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dropsite) (`DOM.on` DOM.dragOver) (ddEvent_ DOM.preventDefault)
     performEvent_ $ return () <$ dragOverEvent
 
-    dropEvent <- wrapDomEvent (_el_element dropsite) (`DOM.on` DOM.drop) $ ddEvent $ \dt -> do
+    dropEvent <- wrapDomEvent (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dropsite) (`DOM.on` DOM.drop) $ ddEvent $ \dt -> do
       DOM.preventDefault
       DOM.getData dt ("application/x-reflex-description" :: String)
     dropText <- holdDyn "Drop here" $ fmap ("Dropped " <>) dropEvent

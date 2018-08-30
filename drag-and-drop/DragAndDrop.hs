@@ -12,6 +12,7 @@ import qualified GHCJS.DOM.DataTransfer as DOM
 import qualified GHCJS.DOM.EventM as DOM
 import qualified GHCJS.DOM.GlobalEventHandlers as DOM
 import qualified GHCJS.DOM.MouseEvent as DOM
+import qualified GHCJS.DOM.Types as DOM
 import GHCJS.Types (JSString)
 import Reflex.Dom
 

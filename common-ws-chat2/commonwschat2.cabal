@@ -1,5 +1,5 @@
 name:                commonwschat2
-version:             0.1.0.0
+version:             0.1.0.1
 build-type:          Simple
 cabal-version:       >=1.24
 
@@ -7,7 +7,7 @@ library
   ghc-options:         -Wall -O2
   exposed-modules:     CommonWsChat
   -- other-extensions:    
-  build-depends:       base >=4.9 && <4.11
+  build-depends:       base
                      , aeson
                      , bytestring
                      , text

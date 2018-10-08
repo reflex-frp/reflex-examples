@@ -57,15 +57,15 @@
     /* ghcjs = ["common" "frontend"]; */
   };
   tools = ghc: with ghc; [
-    pkgs.haskellPackages.ghc-mod
-    pkgs.haskellPackages.hasktags
-    pkgs.haskellPackages.haskdogs
-    pkgs.haskellPackages.hdevtools
-    pkgs.haskellPackages.hindent
-    pkgs.haskellPackages.hsimport
     pkgs.haskellPackages.hlint
-    pkgs.haskellPackages.pointfree
-    pkgs.haskellPackages.pointful
-    pkgs.haskellPackages.stylish-haskell
+    # pkgs.haskellPackages.hdevtools
+    # pkgs.haskellPackages.ghc-mod
+    # pkgs.haskellPackages.hasktags
+    # pkgs.haskellPackages.haskdogs
+    # pkgs.haskellPackages.hindent
+    # pkgs.haskellPackages.hsimport
+    # pkgs.haskellPackages.pointfree
+    # pkgs.haskellPackages.pointful
+    # pkgs.haskellPackages.stylish-haskell
   ];
 })

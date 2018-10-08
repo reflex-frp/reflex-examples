@@ -1,5 +1,5 @@
 name:                fileinput
-version:             0.1.0.0
+version:             0.1.0.1
 build-type:          Simple
 cabal-version:       >=1.10
 
@@ -7,7 +7,7 @@ executable fileinput
   main-is:             Main.hs
   ghc-options:         -Wall -O2 -threaded -rtsopts -with-rtsopts=-N
   -- other-extensions:    
-  build-depends:       base >=4.9 && <4.11
+  build-depends:       base
                      -- , common -- we don't need common parts here
                      , text
                      , dependent-sum

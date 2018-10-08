@@ -1,0 +1,17 @@
+packages:
+  common/
+  backend/
+  BasicTodo/
+  drag-and-drop/
+  fileinput/
+  nasa-pod/
+  Keyboard/
+  othello/
+  peg-solitaire/
+  websocket-echo/
+  xhr-blob/
+  backend-ws-chat/
+  backend-ws-chat2/
+  ws-chat/
+  ws-chat2/
+  common-ws-chat2/

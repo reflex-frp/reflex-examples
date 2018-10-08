@@ -36,9 +36,10 @@ opposite White = Black
 opposite Empty = Empty
 
 newBoard :: Board
-newBoard = emptyArray // [((4,4), White),((4,5), Black),((5,4), Black),((5,5), White)]
-  where
-    emptyArray = listArray ((1,1),(8,8)) (repeat Empty)
+newBoard =
+    emptyArray // [((4,4), White),((4,5), Black),((5,4), Black),((5,5), White)]
+    where
+        emptyArray = listArray ((1,1),(8,8)) (repeat Empty)
 
 newGame :: Game
 newGame = Game Black newBoard
@@ -51,7 +52,7 @@ setPosition brd square p =
 
 toFlip :: Board -> Square -> Line -> Line
 toFlip _ _ []   = []
-toFlip _ _ ([_]) = []
+toFlip _ _ [_] = []
 toFlip b p l
   | b ! head l == p || b ! head l == Empty = [] -- short circuit for obvious cases.
   | zs /= [] && fst (head zs) == p = map snd ys
@@ -79,7 +80,7 @@ legalMoves :: Game -> [(Game, Position)]
 legalMoves g@(Game p b) = zip gs ls
   where
     ls = filter (isLegal b p) squares
-    gs = map (\s ->  move s g) ls
+    gs = map (`move` g) ls
 
 move :: Position -> Game -> Game
 move square g@(Game p b)

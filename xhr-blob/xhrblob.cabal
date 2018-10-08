@@ -1,0 +1,24 @@
+name:                xhrblob
+version:             0.1.0.1
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable xhrblob
+  main-is:             Main.hs
+  ghc-options:         -Wall -O2 -threaded -rtsopts -with-rtsopts=-N
+  -- other-extensions:    
+  build-depends:       base 
+                     -- , common -- we don't need common parts here
+                     -- , containers
+                     --, lens
+                     , text
+                     , ghcjs-dom
+                     , reflex
+                     , reflex-dom
+                     , reflex-dom-core
+                     , jsaddle
+                     -- , gi-webkit2
+                     -- , webkit2gtk3-javascriptcore
+                     -- , jsaddle-warp
+  hs-source-dirs:      src
+  default-language:    Haskell2010

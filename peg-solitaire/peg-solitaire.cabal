@@ -19,7 +19,9 @@ executable peg-solitaire
     reflex,
     reflex-dom,
     file-embed,
-    array
+    array,
+    jsaddle,
+    text
 
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto

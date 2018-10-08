@@ -1,0 +1,15 @@
+compiler: ghcjs 
+packages:
+  common/
+  BasicTodo/
+  drag-and-drop/
+  fileinput/
+  nasa-pod/
+  Keyboard/
+  othello/
+  peg-solitaire/
+  websocket-echo/
+  xhr-blob/
+  ws-chat/
+  ws-chat2
+  common-ws-chat2/

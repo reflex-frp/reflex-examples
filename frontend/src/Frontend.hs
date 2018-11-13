@@ -36,25 +36,36 @@ frontend :: Frontend (R FrontendRoute)
 frontend = Frontend
   { _frontend_head = pageHead
   , _frontend_body = do
-      -- The recursion here allows us to send a click event from the content area "up" into the header
-      rec el "header" $ nav click
-          click <- mainContainer $ do
-            article $ subRoute_ $ \case
-              FrontendRoute_Home -> home
-              FrontendRoute_BasicToDo -> BasicToDo.app
-              FrontendRoute_DragAndDrop -> DragAndDrop.app
-              FrontendRoute_FileReader -> FileReader.app
-              FrontendRoute_ScreenKeyboard -> ScreenKeyboard.app
-              FrontendRoute_NasaPod -> NasaPod.app
-              FrontendRoute_PegSolitaire -> PegSolitaire.app
-              FrontendRoute_WebSocketEcho -> WebSocketEcho.app
-              FrontendRoute_WebSocketChat -> WebSocketChat.app
+      el "header" $ nav
+      el "main" $ article $ subRoute_ $ \case
+        FrontendRoute_Home -> home
+        FrontendRoute_Examples -> maybeRoute_ home $ examples =<< askRoute
       return ()
   }
 
--- | The @<main>@ tag that will contain most of the site's content
-mainContainer :: DomBuilder t m => m () -> m (Event t ())
-mainContainer w = domEvent Click . fst <$> el' "main" w
+-- | Displays the example
+examples
+  :: ( DomBuilder t m
+     , PostBuild t m
+     , MonadFix m
+     , MonadHold t m
+     , PerformEvent t m
+     , TriggerEvent t m
+     , Prerender js m
+     , RouteToUrl (R FrontendRoute) m
+     , SetRoute t (R FrontendRoute) m
+     )
+  => Dynamic t (R Example)
+  -> RoutedT t (R Example) m ()
+examples _ = subRoute_ $ \case
+  Example_BasicToDo -> BasicToDo.app
+  Example_DragAndDrop -> DragAndDrop.app
+  Example_FileReader -> FileReader.app
+  Example_ScreenKeyboard -> ScreenKeyboard.app
+  Example_NasaPod -> NasaPod.app
+  Example_PegSolitaire -> PegSolitaire.app
+  Example_WebSocketEcho -> WebSocketEcho.app
+  Example_WebSocketChat -> WebSocketChat.app
 
 -- | An @<article>@ tag that will set its title and the class of its child
 -- @<section>@ based on the current route

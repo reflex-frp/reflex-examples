@@ -37,15 +37,19 @@ data BackendRoute :: * -> * where
 
 data FrontendRoute :: * -> * where
   FrontendRoute_Home :: FrontendRoute ()
-  FrontendRoute_BasicToDo :: FrontendRoute ()
-  FrontendRoute_DragAndDrop :: FrontendRoute ()
-  FrontendRoute_FileReader :: FrontendRoute ()
-  FrontendRoute_ScreenKeyboard :: FrontendRoute ()
-  FrontendRoute_NasaPod :: FrontendRoute ()
-  FrontendRoute_PegSolitaire :: FrontendRoute ()
-  FrontendRoute_WebSocketEcho :: FrontendRoute ()
-  FrontendRoute_WebSocketChat :: FrontendRoute ()
+  FrontendRoute_Examples :: FrontendRoute (Maybe (R Example))
 deriving instance Show (FrontendRoute a)
+
+data Example :: * -> * where
+  Example_BasicToDo :: Example ()
+  Example_DragAndDrop :: Example ()
+  Example_FileReader :: Example ()
+  Example_ScreenKeyboard :: Example ()
+  Example_NasaPod :: Example ()
+  Example_PegSolitaire :: Example ()
+  Example_WebSocketEcho :: Example ()
+  Example_WebSocketChat :: Example ()
+deriving instance Show (Example a)
 
 backendRouteEncoder
   :: Encoder (Either Text) Identity (R (Sum BackendRoute (ObeliskRoute FrontendRoute))) PageName
@@ -57,72 +61,107 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
       -- The encoder given to PathEnd determines how to parse query parameters,
       -- in this example, we have none, so we insist on it.
       FrontendRoute_Home -> PathEnd $ unitEncoder mempty
-      FrontendRoute_BasicToDo -> PathSegment "basictodo" $ unitEncoder mempty
-      FrontendRoute_DragAndDrop -> PathSegment "draganddrop" $ unitEncoder mempty
-      FrontendRoute_FileReader -> PathSegment "filereader" $ unitEncoder mempty
-      FrontendRoute_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
-      FrontendRoute_NasaPod -> PathSegment "nasapod" $ unitEncoder mempty
-      FrontendRoute_PegSolitaire -> PathSegment "pegsolitaire" $ unitEncoder mempty
-      FrontendRoute_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
-      FrontendRoute_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
+      FrontendRoute_Examples -> PathSegment "examples" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
+        Example_BasicToDo -> PathSegment "basictodo" $ unitEncoder mempty
+        Example_DragAndDrop -> PathSegment "draganddrop" $ unitEncoder mempty
+        Example_FileReader -> PathSegment "filereader" $ unitEncoder mempty
+        Example_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
+        Example_NasaPod -> PathSegment "nasapod" $ unitEncoder mempty
+        Example_PegSolitaire -> PathSegment "pegsolitaire" $ unitEncoder mempty
+        Example_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
+        Example_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
   , ''FrontendRoute
+  , ''Example
   ]
 
 
 -- | Provide a human-readable name for a given section
-sectionTitle :: Some FrontendRoute -> Text
-sectionTitle (Some.This sec) = case sec of
-  FrontendRoute_Home -> "Home"
-  FrontendRoute_BasicToDo -> "ToDo"
-  FrontendRoute_DragAndDrop -> "Drap n Drop"
-  FrontendRoute_FileReader -> "File Reader"
-  FrontendRoute_ScreenKeyboard -> "Screen Keyboard"
-  FrontendRoute_NasaPod -> "Nasa Pod"
-  FrontendRoute_PegSolitaire -> "Peg Solitaire"
-  FrontendRoute_WebSocketEcho -> "WebSocket Echo"
-  FrontendRoute_WebSocketChat -> "WebSocket Chat"
+exampleTitle :: Some Example -> Text
+exampleTitle (Some.This sec) = case sec of
+  Example_BasicToDo -> "Basic ToDo"
+  Example_DragAndDrop -> "Drap n Drop"
+  Example_FileReader -> "File Reader"
+  Example_ScreenKeyboard -> "Onscreen Keyboard"
+  Example_NasaPod -> "Nasa Picture of the Day"
+  Example_PegSolitaire -> "Peg Solitaire"
+  Example_WebSocketEcho -> "WebSocket Echo"
+  Example_WebSocketChat -> "WebSocket Chat"
 
 
 -- | Provide a human-readable name for a route
 routeTitle :: R FrontendRoute -> Text
-routeTitle (sec :=> _) = sectionTitle $ Some.This sec
+routeTitle = \case
+  (FrontendRoute_Home :=> _) -> "Examples"
+  (FrontendRoute_Examples :=> Identity ex) -> case ex of
+    (Nothing) -> "Examples"
+    (Just (sec :=> _)) -> exampleTitle $ Some.This sec
 
 -- | Given a section, provide its default route
-sectionHomepage :: Some FrontendRoute -> R FrontendRoute
+sectionHomepage :: Some Example -> R Example
 sectionHomepage (Some.This sec) = sec :/ case sec of
-  FrontendRoute_Home -> ()
-  FrontendRoute_BasicToDo -> ()
-  FrontendRoute_DragAndDrop -> ()
-  FrontendRoute_FileReader -> ()
-  FrontendRoute_ScreenKeyboard -> ()
-  FrontendRoute_NasaPod -> ()
-  FrontendRoute_PegSolitaire -> ()
-  FrontendRoute_WebSocketEcho -> ()
-  FrontendRoute_WebSocketChat -> ()
+  Example_BasicToDo -> ()
+  Example_DragAndDrop -> ()
+  Example_FileReader -> ()
+  Example_ScreenKeyboard -> ()
+  Example_NasaPod -> ()
+  Example_PegSolitaire -> ()
+  Example_WebSocketEcho -> ()
+  Example_WebSocketChat -> ()
 
 -- | Provide a human-readable description for a given section
-sectionDescription :: Some FrontendRoute -> Text
-sectionDescription (Some.This sec) = case sec of
-  FrontendRoute_Home -> "Examples of Reflex FRP usage"
-  FrontendRoute_BasicToDo -> "A simple ToDo list app"
-  FrontendRoute_DragAndDrop ->
+exampleDescription :: Some Example -> Text
+exampleDescription (Some.This sec) = case sec of
+  Example_BasicToDo -> "A simple ToDo list app"
+  Example_DragAndDrop ->
     "An example to demonstrate Drag and Drop functionality using JavaScript code?"
-  FrontendRoute_FileReader ->
+  Example_FileReader ->
     "Read a file on the client side using FileReader"
-  FrontendRoute_ScreenKeyboard ->
+  Example_ScreenKeyboard ->
     "Use an onscreen keyboard along with the normal user input"
-  FrontendRoute_NasaPod ->
+  Example_NasaPod ->
     "Demonstrates XHR requests, by fetching Nasa' Astronomy Picture of the Day"
-  FrontendRoute_PegSolitaire ->
+  Example_PegSolitaire ->
     "A simple client side game"
-  FrontendRoute_WebSocketEcho ->
+  Example_WebSocketEcho ->
     "Demonstrates use of WebSocket by sending and receiving messages from websocket.org' echo API"
-  FrontendRoute_WebSocketChat ->
+  Example_WebSocketChat ->
     "Use WebSocket communication to implement a simple chat server, this uses the common and backend packages to implement a simple server"
 
 -- | Provide a human-readable description for a given route
 routeDescription :: R FrontendRoute -> Text
-routeDescription (sec :=> _) = sectionDescription $ Some.This sec
+routeDescription  = \case
+  (FrontendRoute_Home :=> _) -> desc
+  (FrontendRoute_Examples :=> Identity m) -> case m of
+    (Nothing) -> desc
+    (Just (ex :=> _)) -> exampleDescription $ Some.This ex
+  where
+    desc :: Text
+    desc = "Welcome to Reflex Examples"
+
+routeSourceCode :: R FrontendRoute -> Text
+routeSourceCode = \case
+  (FrontendRoute_Home :=> _) -> src
+  (FrontendRoute_Examples :=> Identity m) -> case m of
+    (Nothing) -> src
+    (Just ex) -> exampleSourceCode ex
+  where
+    src :: Text
+    src = "https://github.com/reflex-frp/reflex-examples"
+
+exampleSourceCode :: R Example -> Text
+exampleSourceCode (sec :=> _) = base <> path <> file
+  where
+    base = "https://github.com/reflex-frp/reflex-examples/blob/master/frontend/src/Examples/"
+    file = "/Main.hs"
+    path = case sec of
+      Example_BasicToDo -> "BasicToDo"
+      Example_DragAndDrop -> "DragAndDrop"
+      Example_FileReader -> "FileReader"
+      Example_ScreenKeyboard -> "ScreenKeyboard"
+      Example_NasaPod -> "NasaPod"
+      Example_PegSolitaire -> "PegSolitaire"
+      Example_WebSocketEcho -> "WebSocketEcho"
+      Example_WebSocketChat -> "WebSocketChat"

@@ -29,27 +29,17 @@ nav
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
      )
-  => Event t () -- ^ When this event fires, collapse the menu
-  -> m ()
-nav collapseMenu = do
+  => m ()
+nav = do
   openMenu <- divClass "logo-menu" $ do
     logo
-    divClass "menu-toggle" $ do
-      activeTab <- askRoute
+    activeTab <- askRoute
+    divClass "" $ do
       -- Build the title items, which will only be displayed on small screens
-      (currentSection, _) <- elAttr' "a" ("class" =: "current-section") $
-        dynText $ routeTitle <$> activeTab
-      hamburger <- icon "bars"
-      foldDyn ($) False $ leftmost
-        [ not <$ domEvent Click currentSection
-        , not <$ domEvent Click hamburger
-        , const False <$ updated activeTab
-        , const False <$ collapseMenu
-        ]
-  let openAttrs = ffor openMenu $ \case
-        True -> "class" =: "active"
-        False -> mempty
-  elDynAttr "nav" openAttrs menu
+      dynText $ routeTitle <$> activeTab
+    divClass "" $ do
+      dynText $ routeSourceCode <$> activeTab
+  el "nav" menu
 
 -- | Displays the logo and returns an event that fires when the logo is clicked
 logo :: (DomBuilder t m, SetRoute t (R FrontendRoute) m, RouteToUrl (R FrontendRoute) m)
@@ -60,7 +50,7 @@ logo = do
         , "src" =: static @"img/logo.svg"
         , "alt" =: "Reflex"
         ]
-  routeLink (FrontendRoute_Home :/ ()) $ elAttr "img" logoAttrs blank
+  routeLink (FrontendRoute_Examples :/ Nothing) $ elAttr "img" logoAttrs blank
 
 -- | Build the nav's tabs
 menu
@@ -72,17 +62,6 @@ menu
      )
   => m ()
 menu = do
-  -- Get the current route, so that we can highlight the corresponding tab
-  currentTab <- askRoute
-  let currentTabDemux = demux $ fmap (\(sec :=> _) -> Some.This sec) currentTab
-  -- Iterate over all the top-level routes
-  forM_ universe $ \section -> do
-    -- Create a link that is highlighted if it is the current section
-    let thisTabIsSelected = demuxed currentTabDemux section
-        highlight = ffor thisTabIsSelected $ \case
-          True -> "class" =: "nav-link active"
-          False -> "class" =: "nav-link"
-    elDynAttr "span" highlight $ routeLink (sectionHomepage section) $ text $ sectionTitle section
   forkMeOnGithub
 
 forkMeOnGithub

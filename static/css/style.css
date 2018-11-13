@@ -96,10 +96,6 @@ header nav .fork-link a img {
     border: 0;
 }
 
-header i.fa {
-  display: none;
-}
-
 header .current-section {
   display: none;
 }

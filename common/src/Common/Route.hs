@@ -81,11 +81,11 @@ concat <$> mapM deriveRouteComponent
 -- | Provide a human-readable name for a given section
 exampleTitle :: Some Example -> Text
 exampleTitle (Some.This sec) = case sec of
-  Example_BasicToDo -> "Basic ToDo"
-  Example_DragAndDrop -> "Drap n Drop"
+  Example_BasicToDo -> "Basic To Do List"
+  Example_DragAndDrop -> "Drag n Drop"
   Example_FileReader -> "File Reader"
   Example_ScreenKeyboard -> "Onscreen Keyboard"
-  Example_NasaPod -> "Nasa Picture of the Day"
+  Example_NasaPod -> "Nasa: Picture of the Day"
   Example_PegSolitaire -> "Peg Solitaire"
   Example_WebSocketEcho -> "WebSocket Echo"
   Example_WebSocketChat -> "WebSocket Chat"
@@ -116,9 +116,9 @@ exampleDescription :: Some Example -> Text
 exampleDescription (Some.This sec) = case sec of
   Example_BasicToDo -> "A simple ToDo list app"
   Example_DragAndDrop ->
-    "An example to demonstrate Drag and Drop functionality using JavaScript code?"
+    "An example to demonstrate Drag and Drop functionality"
   Example_FileReader ->
-    "Read a file on the client side using FileReader"
+    "Read a file on the client using FileReader"
   Example_ScreenKeyboard ->
     "Use an onscreen keyboard along with the normal user input"
   Example_NasaPod ->

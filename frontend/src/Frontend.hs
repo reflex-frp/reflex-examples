@@ -79,5 +79,4 @@ article
 article c = el "article" $ do
   r <- askRoute
   el "h3" $ dynText $ routeDescription <$> r
-  let sectionClass = ("class" =: "")
-  elAttr "section" sectionClass c
+  divClass "" c

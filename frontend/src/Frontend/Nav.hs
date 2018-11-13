@@ -33,12 +33,6 @@ nav
 nav = do
   openMenu <- divClass "logo-menu" $ do
     logo
-    activeTab <- askRoute
-    divClass "" $ do
-      -- Build the title items, which will only be displayed on small screens
-      dynText $ routeTitle <$> activeTab
-    divClass "" $ do
-      dynText $ routeSourceCode <$> activeTab
   el "nav" menu
 
 -- | Displays the logo and returns an event that fires when the logo is clicked
@@ -50,7 +44,7 @@ logo = do
         , "src" =: static @"img/logo.svg"
         , "alt" =: "Reflex"
         ]
-  routeLink (FrontendRoute_Examples :/ Nothing) $ elAttr "img" logoAttrs blank
+  routeLink (FrontendRoute_Home :/ ()) $ elAttr "img" logoAttrs blank
 
 -- | Build the nav's tabs
 menu
@@ -62,6 +56,16 @@ menu
      )
   => m ()
 menu = do
+  activeTab <- askRoute
+  elAttr "span" ("class" =: "nav-link active") $ do
+    -- Build the title items, which will only be displayed on small screens
+    el "a" $ dynText $ routeTitle <$> activeTab
+  elAttr "span" ("class" =: "nav-link") $ do
+    let src = routeSourceCode <$> activeTab
+    elDynAttr "a" ((\s -> "href" =: s <> "target" =: "_blank") <$> src) $ do
+      text "Source Code"
+      icon_ "external-link-alt"
+
   forkMeOnGithub
 
 forkMeOnGithub

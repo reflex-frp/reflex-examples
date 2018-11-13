@@ -25,7 +25,12 @@ home
 home = do
   elClass "p" "class" $ do
     text "Reflex is a fully-deterministic, higher-order Functional Reactive Programming (FRP) interface and an engine that efficiently implements that interface."
-    text "The following are some examples to demonstrate how the usage of Reflex"
+  elClass "p" "class" $ do
+    text "The following are some examples of using Reflex along with "
+    let obSrc = "https://github.com/obsidiansystems/obelisk"
+    elAttr "a" ("href" =: obSrc <> "target" =: "_blank") $ text "Obelisk."
+  elClass "p" "class" $ do
+    text "To run these examples on your machine, install Obelisk, clone this repo and run 'ob run' command."
   examplesList
 
 examplesList

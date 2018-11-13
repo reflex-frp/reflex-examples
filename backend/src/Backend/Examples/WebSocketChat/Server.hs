@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
+module Backend.Examples.WebSocketChat.Server where
 
 import           Control.Concurrent (MVar, modifyMVar, modifyMVar_, newMVar,
                                      readMVar)
@@ -17,7 +17,7 @@ import qualified Data.Text.IO       as T
 import qualified Network.WebSockets as WS
 
 --------------------------------------------------------------------------------
-import           CommonWsChat
+import           Common.Examples.WebSocketChat.Message
 --------------------------------------------------------------------------------
 
 type Client = (Text, WS.Connection)
@@ -45,11 +45,6 @@ broadcast message clients = do
     -- forM_ clients $ \(_, conn) -> WS.sendTextData conn message
     forM_ clients $ \(_, conn) -> WS.sendTextData conn $
         (toStrict . encode . S2Cbroadcast) message
-
-main :: IO ()
-main = do
-    state <- newMVar newServerState
-    WS.runServer "127.0.0.1" 8000 $ application state
 
 application :: MVar ServerState -> WS.ServerApp
 application state pending = do

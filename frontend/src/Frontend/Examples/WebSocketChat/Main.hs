@@ -54,7 +54,7 @@ app = do
       loggedInEv = fmapMaybe loginEv msgRecEv
     wsRespEv <- prerender (return never) $ do
       let sendEv = fmap ((:[]) . toStrict . encode) msgSendEv
-      ws <- webSocket "ws://localhost:8000" $ def & webSocketConfig_send .~ sendEv
+      ws <- webSocket "ws://localhost:8000/websocketchat" $ def & webSocketConfig_send .~ sendEv
       return (_webSocket_recv ws)
     receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] eRecRespTxt
     el "div" $ do

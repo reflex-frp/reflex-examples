@@ -3,7 +3,7 @@
 module Common.Examples.WebSocketChat.Message where
 
 import           Data.Aeson (ToJSON, FromJSON, toEncoding, parseJSON,
-                            defaultOptions,
+                            defaultOptions, Options,
                             genericToEncoding, genericParseJSON)
 import qualified Data.Text as T
 import           GHC.Generics (Generic)
@@ -13,7 +13,7 @@ data C2S = C2Sjoin T.Text
          | C2Smsg T.Text
          deriving (Eq,Show, Generic)
 
--- options :: Options
+options :: Options
 options = defaultOptions -- { tagSingleConstructors = True }
 
 instance ToJSON C2S where toEncoding = genericToEncoding options

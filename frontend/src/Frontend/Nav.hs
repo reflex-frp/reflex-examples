@@ -7,23 +7,15 @@
 module Frontend.Nav (nav) where
 
 import Common.Route
-import Control.Monad (forM_)
-import Control.Monad.Fix (MonadFix)
-import Data.Dependent.Sum (DSum ((:=>)))
-import qualified Data.Some as Some
-import Data.Universe (universe)
 import Obelisk.Generated.Static
 import Obelisk.Route
 import Obelisk.Route.Frontend
 import Reflex.Dom
-
 import Frontend.FontAwesome
 
 -- | Build the entire nav bar, with hamburger menu for expanding on mobile
 nav
   :: ( DomBuilder t m
-     , MonadHold t m
-     , MonadFix m
      , PostBuild t m
      , Routed t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
@@ -31,8 +23,7 @@ nav
      )
   => m ()
 nav = do
-  openMenu <- divClass "logo-menu" $ do
-    logo
+  divClass "logo-menu" $ logo
   el "nav" menu
 
 -- | Displays the logo and returns an event that fires when the logo is clicked
@@ -50,9 +41,7 @@ logo = do
 menu
   :: ( DomBuilder t m
      , PostBuild t m
-     , SetRoute t (R FrontendRoute) m
      , Routed t (R FrontendRoute) m
-     , RouteToUrl (R FrontendRoute) m
      )
   => m ()
 menu = do

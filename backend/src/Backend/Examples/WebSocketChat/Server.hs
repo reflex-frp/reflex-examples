@@ -2,7 +2,7 @@
 
 module Backend.Examples.WebSocketChat.Server where
 
-import           Control.Concurrent (MVar, modifyMVar, modifyMVar_, newMVar,
+import           Control.Concurrent (MVar, modifyMVar, modifyMVar_,
                                      readMVar)
 import           Control.Exception  (finally)
 import           Control.Monad      (forM_, forever)

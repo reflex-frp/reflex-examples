@@ -6,7 +6,7 @@
 
 module Frontend.Examples.FileReader.Main where
 
-import           Control.Monad         ((<=<))
+import           Control.Monad         ((<=<), void)
 import           Data.Maybe            (listToMaybe)
 import           Data.Monoid           ((<>))
 import           Data.Text             (Text)
@@ -15,11 +15,7 @@ import           GHCJS.DOM.EventM      (on)
 import           GHCJS.DOM.FileReader  (newFileReader, readAsDataURL, load
                                        , getResult)
 import           Language.Javascript.JSaddle
-import           Reflex.Dom            hiding (mainWidget)
-import           Reflex.Dom.Core       (mainWidget)
-
-main :: IO ()
-main = run $ mainWidget app
+import           Reflex.Dom
 
 app
   :: ( DomBuilder t m
@@ -37,11 +33,10 @@ app = do
       . fmapMaybe listToMaybe
       . updated $ filesDyn
   el "br" blank
-  el "div"
+  void $ el "div"
       . widgetHold blank
       . ffor urlE $ \url ->
           elAttr "img" ("src" =: url <> "style" =: "max-width: 80%") blank
-  return ()
 
 fileInputElement :: DomBuilder t m => m (Dynamic t [RawFile (DomBuilderSpace m)])
 fileInputElement = do

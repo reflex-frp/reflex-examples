@@ -8,16 +8,13 @@
 {-# LANGUAGE GADTs #-}
 module Frontend where
 
-import qualified Data.Text as T
 import Obelisk.Frontend
 import Obelisk.Route
 import Obelisk.Route.Frontend
 import Reflex.Dom.Core
 
 import Control.Monad.Fix (MonadFix)
-import Common.Api
 import Common.Route
-import Obelisk.Generated.Static
 
 import Frontend.Head
 import Frontend.Home
@@ -52,8 +49,6 @@ examples
      , PerformEvent t m
      , TriggerEvent t m
      , Prerender js m
-     , RouteToUrl (R FrontendRoute) m
-     , SetRoute t (R FrontendRoute) m
      )
   => Dynamic t (R Example)
   -> RoutedT t (R Example) m ()

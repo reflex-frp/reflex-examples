@@ -6,18 +6,13 @@ module Frontend.Home (home) where
 
 import Reflex.Dom
 import Control.Monad (forM_)
-import Control.Monad.Fix (MonadFix)
-import Data.Dependent.Sum (DSum ((:=>)))
-import qualified Data.Some as Some
 import Data.Universe (universe)
-import Obelisk.Generated.Static
 import Obelisk.Route
 import Obelisk.Route.Frontend
 import Common.Route
 
 home
   :: ( DomBuilder t m
-     , PostBuild t m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
      )
@@ -35,7 +30,6 @@ home = do
 
 examplesList
   :: ( DomBuilder t m
-     , PostBuild t m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
      )

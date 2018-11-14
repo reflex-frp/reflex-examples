@@ -4,7 +4,6 @@
 
 module Frontend.Examples.WebSocketEcho.Main where
 
-import qualified Data.Text          as T
 import           Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import           Reflex.Dom         hiding (mainWidget)
 import           Reflex.Dom.Core    (mainWidget)

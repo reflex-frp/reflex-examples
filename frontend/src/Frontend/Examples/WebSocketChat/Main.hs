@@ -9,7 +9,6 @@ module Frontend.Examples.WebSocketChat.Main where
 import           Data.Aeson         (encode,decode)
 import           Data.ByteString    as B
 import           Data.ByteString.Lazy (toStrict, fromStrict)
-import qualified Data.Map           as Map
 import           Data.Monoid        ((<>))
 import qualified Data.Text          as T
 import           Data.Text (Text)
@@ -18,7 +17,8 @@ import           Language.Javascript.JSaddle
 import           Reflex
 import           Reflex.Dom         hiding (mainWidget)
 import           Reflex.Dom.Core    (mainWidget)
-import Control.Monad.Fix (MonadFix)
+import           Control.Monad.Fix (MonadFix)
+import           Control.Monad      (void)
 
 --------------------------------------------------------------------------------
 import           Common.Examples.WebSocketChat.Message
@@ -57,7 +57,7 @@ app = do
       ws <- webSocket "ws://localhost:8000/websocketchat" $ def & webSocketConfig_send .~ sendEv
       return (_webSocket_recv ws)
     receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] eRecRespTxt
-    el "div" $ do
+    void $ el "div" $ do
       el "p" $ text "Responses from the backend chat -server:"
       el "ul" $ simpleList receivedMessages (\m -> el "li" $ dynText m)
   blank
@@ -79,10 +79,8 @@ app = do
 loginWidget
   :: ( DomBuilder t m
      , MonadFix m
-     , MonadHold t m
      , PostBuild t m
      , PerformEvent t m
-     , TriggerEvent t m
      , Prerender js m
      )
   => m (Event t C2S)
@@ -103,10 +101,8 @@ loginWidget = el "div" $ do
 messagingWidget
   :: ( DomBuilder t m
      , MonadFix m
-     , MonadHold t m
      , PostBuild t m
      , PerformEvent t m
-     , TriggerEvent t m
      , Prerender js m
      )
   => m (Event t C2S)
@@ -121,11 +117,8 @@ messagingWidget = el "div" $ do
 
 doFocus
   :: ( DomBuilder t m
-     , MonadFix m
-     , MonadHold t m
      , PostBuild t m
      , PerformEvent t m
-     , TriggerEvent t m
      , Prerender js m
      )
   => InputElement EventResult (DomBuilderSpace m) t
@@ -133,5 +126,5 @@ doFocus
 doFocus ie = prerender (return ()) $ do
   pb <- getPostBuild
   let h = _inputElement_raw ie
-  performEvent (fmap (liftJSM . const (focus h)) pb)
+  performEvent_ (fmap (liftJSM . const (focus h)) pb)
   return ()

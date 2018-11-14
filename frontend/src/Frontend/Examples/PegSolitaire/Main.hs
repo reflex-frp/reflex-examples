@@ -7,16 +7,16 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE DataKinds             #-}
 
-module Frontend.Examples.PegSolitaire.Main where
+module Frontend.Examples.PegSolitaire.Main
+  (app)
+  where
 
 import           Control.Arrow     ((&&&))
 import           Data.Array.IArray as A
 import           Data.Monoid       ((<>))
 import qualified Data.Text         as T
 
-import           Reflex
-import           Reflex.Dom        hiding (mainWidgetWithCss)
-import           Reflex.Dom.Core   (mainWidgetWithCss)
+import           Reflex.Dom
 import           Obelisk.Generated.Static
 import Control.Monad.Fix (MonadFix)
 
@@ -52,23 +52,11 @@ data Compass = North | East | South | West deriving (Enum)
 -- View
 --------------------------------------------------------------------------------
 
--- main :: IO ()
--- main = run $ mainWidgetWithCss
---     ( $(embedFile "static/css/normalize.css")
---       <> $(embedFile "static/css/skeleton.css")
---       <> $(embedFile "static/css/font-awesome.min.css")
---     ) app
-
--- TODO Add CSS head
-
 app
   :: ( DomBuilder t m
      , MonadFix m
      , MonadHold t m
      , PostBuild t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , Prerender js m
      )
   => m ()
 app = elClass "div" "container" $ do

@@ -116,7 +116,7 @@ sectionHomepage (Some.This sec) = sec :/ case sec of
 -- | Provide a human-readable description for a given section
 exampleDescription :: Some Example -> Text
 exampleDescription (Some.This sec) = case sec of
-  Example_BasicToDo -> "A simple ToDo list app"
+  Example_BasicToDo -> "A simple To-Do list app with user input handling and state management."
   Example_DragAndDrop ->
     "An example to demonstrate Drag and Drop functionality"
   Example_FileReader ->
@@ -130,7 +130,7 @@ exampleDescription (Some.This sec) = case sec of
   Example_WebSocketEcho ->
     "Demonstrates use of WebSocket by sending and receiving messages from websocket.org' echo API"
   Example_WebSocketChat ->
-    "Use WebSocket communication to implement a simple chat server, this uses the common and backend packages to implement a simple server"
+    "A simple chat server, this uses the common and backend packages to share data between client and server"
 
 -- | Provide a human-readable description for a given route
 routeDescription :: R FrontendRoute -> Text

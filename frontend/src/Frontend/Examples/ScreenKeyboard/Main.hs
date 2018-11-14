@@ -11,8 +11,8 @@ module Frontend.Examples.ScreenKeyboard.Main where
  - buttons + real keyboard both writing to a text box
  -}
 
-import           Control.Monad               (forM)
-import           Control.Monad.Fix (MonadFix)
+import           Control.Monad               (forM, void)
+import           Control.Monad.Fix           (MonadFix)
 import qualified Data.List.NonEmpty          as DL (head)
 import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
@@ -20,9 +20,7 @@ import           Data.Text (Text)
 import           GHCJS.DOM.HTMLElement       (focus)
 import           GHCJS.DOM.HTMLInputElement  hiding (setValue)
 import           Language.Javascript.JSaddle
-import           Reflex
-import           Reflex.Dom                  hiding (mainWidget)
-import           Reflex.Dom.Core             (mainWidget)
+import           Reflex.Dom
 
 -- import Language.Javascript.JSaddle.Warp
 
@@ -42,7 +40,6 @@ inputW
      , Prerender js m
      , PerformEvent t m
      , MonadFix m
-     , TriggerEvent t m
      )
   => Event t Char
   -> m ()
@@ -60,7 +57,6 @@ doStuff
   :: ( DomBuilder t m
      , Prerender js m
      , PerformEvent t m
-     , TriggerEvent t m
      )
   => Behavior t Text
   -> RawInputElement (DomBuilderSpace m)
@@ -69,10 +65,10 @@ doStuff
 doStuff cur html buttonE = do
   posCharE :: Event t (Char, Int) <- prerender (return never) $ do
     ev <- performArg (\c -> (,) c <$> getSelectionStart html) buttonE
-    delay 0.1 (fmap snd ev)
-      >>= performArg (\n -> setSelectionStart html (n+ 1)
-      >> setSelectionEnd html (n + 1))
-    performArg (const $ focus html) buttonE -- keep the focus right
+    void $ (flip performArg) (fmap snd ev) $ \n -> do
+      setSelectionStart html (n + 1)
+      setSelectionEnd html (n + 1)
+    void $ performArg (const $ focus html) buttonE -- keep the focus right
     return ev
   let
     newStringE = attachWith (\v (c, n) -> (n + 1, insertAt n c v)) cur posCharE
@@ -85,13 +81,7 @@ app
   :: ( DomBuilder t m
      , MonadFix m
      , PerformEvent t m
-     , TriggerEvent t m
      , Prerender js m
      )
   => m ()
 app = el "div" $ elClass "div" "keys" keys >>= inputW . fromListE
-
-main :: IO ()
-main = run $ mainWidget app
-
-

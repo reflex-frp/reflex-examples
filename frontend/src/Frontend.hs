@@ -26,6 +26,8 @@ import qualified Frontend.Examples.FileReader.Main as FileReader
 import qualified Frontend.Examples.ScreenKeyboard.Main as ScreenKeyboard
 import qualified Frontend.Examples.NasaPod.Main as NasaPod
 import qualified Frontend.Examples.PegSolitaire.Main as PegSolitaire
+import qualified Frontend.Examples.TicTacToe.Main as TicTacToe
+import qualified Frontend.Examples.DisplayGameUpdates.Main as DisplayGameUpdates
 import qualified Frontend.Examples.WebSocketEcho.Main as WebSocketEcho
 import qualified Frontend.Examples.WebSocketChat.Main as WebSocketChat
 
@@ -59,6 +61,8 @@ examples _ = subRoute_ $ \case
   Example_ScreenKeyboard -> ScreenKeyboard.app
   Example_NasaPod -> NasaPod.app
   Example_PegSolitaire -> PegSolitaire.app
+  Example_TicTacToe -> TicTacToe.app
+  Example_DisplayGameUpdates -> DisplayGameUpdates.app
   Example_WebSocketEcho -> WebSocketEcho.app
   Example_WebSocketChat -> WebSocketChat.app
 

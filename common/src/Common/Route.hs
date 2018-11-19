@@ -48,6 +48,8 @@ data Example :: * -> * where
   Example_ScreenKeyboard :: Example ()
   Example_NasaPod :: Example ()
   Example_PegSolitaire :: Example ()
+  Example_TicTacToe :: Example ()
+  Example_DisplayGameUpdates :: Example ()
   Example_WebSocketEcho :: Example ()
   Example_WebSocketChat :: Example ()
 deriving instance Show (Example a)
@@ -70,6 +72,8 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
         Example_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
         Example_NasaPod -> PathSegment "nasapod" $ unitEncoder mempty
         Example_PegSolitaire -> PathSegment "pegsolitaire" $ unitEncoder mempty
+        Example_TicTacToe -> PathSegment "tictactoe" $ unitEncoder mempty
+        Example_DisplayGameUpdates -> PathSegment "displaygameupdates" $ unitEncoder mempty
         Example_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
         Example_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
 
@@ -89,6 +93,8 @@ exampleTitle (Some.This sec) = case sec of
   Example_ScreenKeyboard -> "Onscreen Keyboard"
   Example_NasaPod -> "Nasa: Picture of the Day"
   Example_PegSolitaire -> "Peg Solitaire"
+  Example_TicTacToe -> "Tic Tac Toe"
+  Example_DisplayGameUpdates -> "Display Game Updates"
   Example_WebSocketEcho -> "WebSocket Echo"
   Example_WebSocketChat -> "WebSocket Chat"
 
@@ -110,6 +116,8 @@ sectionHomepage (Some.This sec) = sec :/ case sec of
   Example_ScreenKeyboard -> ()
   Example_NasaPod -> ()
   Example_PegSolitaire -> ()
+  Example_TicTacToe -> ()
+  Example_DisplayGameUpdates -> ()
   Example_WebSocketEcho -> ()
   Example_WebSocketChat -> ()
 
@@ -127,6 +135,10 @@ exampleDescription (Some.This sec) = case sec of
     "Demonstrates XHR requests, by fetching Nasa' Astronomy Picture of the Day"
   Example_PegSolitaire ->
     "A simple client side game"
+  Example_TicTacToe ->
+    "A simple client side game"
+  Example_DisplayGameUpdates ->
+    "An example to demonstrate nested Dynamic values. A widget to show updates for a game."
   Example_WebSocketEcho ->
     "Demonstrates use of WebSocket by sending and receiving messages from websocket.org' echo API"
   Example_WebSocketChat ->
@@ -165,5 +177,7 @@ exampleSourceCode (sec :=> _) = base <> path <> file
       Example_ScreenKeyboard -> "ScreenKeyboard"
       Example_NasaPod -> "NasaPod"
       Example_PegSolitaire -> "PegSolitaire"
+      Example_TicTacToe -> "TicTacToe"
+      Example_DisplayGameUpdates -> "DisplayGameUpdates"
       Example_WebSocketEcho -> "WebSocketEcho"
       Example_WebSocketChat -> "WebSocketChat"

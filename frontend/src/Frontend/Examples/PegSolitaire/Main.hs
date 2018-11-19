@@ -59,7 +59,7 @@ app
      , PostBuild t m
      )
   => m ()
-app = elClass "div" "container" $ do
+app = divClass "container" $ do
   el "br" blank
   elAttr "h1" ("style" =: "text-align: center") $ text "PEG SOLITAIRE"
   el "div" $ do

@@ -3,14 +3,13 @@
 {-# LANGUAGE LambdaCase        #-}
 
 module Frontend.Examples.TicTacToe.Main
-  -- (app)
+  (app)
   where
 
 import qualified Data.Text         as T
 import Data.Text (Text)
-import Control.Monad (forM, join)
+import Control.Monad (forM)
 import Control.Monad.Fix (MonadFix)
-import Data.Foldable (asum)
 import Data.List (elem)
 import Reflex.Dom
 import Data.Array (Array, Ix)
@@ -68,7 +67,6 @@ app = divClass "game" $ do
   rec
     let
       squares = ffor stateDyn $ \(State p mvs) -> makeSquares $ take p mvs
-      won = checkWon . state_moves <$> stateDyn
     stateDyn <- foldDynMaybe changeGameState initState $
       leftmost [goToMove, newMove]
     newMove <- gameBoard squares
@@ -137,13 +135,13 @@ gameInfo
   -> m (Event t Action)
 gameInfo stateDyn = divClass "game-info" $ do
   let
-    nextPlayer = ffor stateDyn $ \(State p mvs) -> if even p
+    nextPlayer = ffor stateDyn $ \(State p _) -> if even p
       then Player_X
       else Player_O
     moveCount = (length . state_moves <$> stateDyn)
 
   el "div" $ do
-    dyn $ ffor (checkWon . state_moves <$> stateDyn) $ \case
+    dyn_ $ ffor (checkWon . state_moves <$> stateDyn) $ \case
       Nothing -> do
         text "Next player: "
         dynText $ ffor nextPlayer $ \case

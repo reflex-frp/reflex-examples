@@ -6,14 +6,16 @@
 
 module Frontend.Examples.WebSocketChat.Main where
 
-import           Data.Aeson         (encode,decode)
+import qualified Data.Aeson as Aeson
 import           Data.ByteString    as B
 import           Data.ByteString.Lazy (toStrict, fromStrict)
+import           Data.Functor.Sum
 import           Data.Monoid        ((<>))
 import qualified Data.Text          as T
 import           Data.Text (Text)
 import           GHCJS.DOM.HTMLElement       (focus)
 import           Language.Javascript.JSaddle
+import           Obelisk.Route
 import           Reflex
 import           Reflex.Dom         hiding (mainWidget)
 import           Reflex.Dom.Core    (mainWidget)
@@ -22,6 +24,7 @@ import           Control.Monad      (void)
 
 --------------------------------------------------------------------------------
 import           Common.Examples.WebSocketChat.Message
+import           Common.Route
 --------------------------------------------------------------------------------
 
 main :: IO ()
@@ -53,9 +56,15 @@ app = do
       eRecRespTxt = fmap showMsg msgRecEv
       loggedInEv = fmapMaybe loginEv msgRecEv
     wsRespEv <- prerender (return never) $ do
-      let sendEv = fmap ((:[]) . toStrict . encode) msgSendEv
-      ws <- webSocket "ws://localhost:8000/websocketchat" $ def & webSocketConfig_send .~ sendEv
-      return (_webSocket_recv ws)
+      case checkEncoder backendRouteEncoder of
+        Left err -> do
+          el "div" $ text err
+          return never
+        Right encoder -> do
+          let wsPath = T.intercalate "/" $ fst $ encode encoder $ InL BackendRoute_WebSocketChat :/ ()
+              sendEv = fmap ((:[]) . toStrict . Aeson.encode) msgSendEv
+          ws <- webSocket ("ws://localhost:8000/" <> wsPath) $ def & webSocketConfig_send .~ sendEv
+          return (_webSocket_recv ws)
     receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] eRecRespTxt
     void $ el "div" $ do
       el "p" $ text "Responses from the backend chat -server:"
@@ -67,7 +76,7 @@ app = do
       _ -> Nothing
 
     decodeOneMsg :: B.ByteString -> Maybe S2C
-    decodeOneMsg = decode . fromStrict
+    decodeOneMsg = Aeson.decode . fromStrict
 
     showMsg :: S2C -> Text
     showMsg = \case

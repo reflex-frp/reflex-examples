@@ -6,6 +6,7 @@
 
 module Frontend.Examples.WebSocketChat.Main where
 
+import           Control.Monad.IO.Class
 import           Data.Aeson         (encode,decode)
 import           Data.ByteString    as B
 import           Data.ByteString.Lazy (toStrict, fromStrict)
@@ -19,6 +20,7 @@ import           Reflex.Dom         hiding (mainWidget)
 import           Reflex.Dom.Core    (mainWidget)
 import           Control.Monad.Fix (MonadFix)
 import           Control.Monad      (void)
+import qualified Obelisk.ExecutableConfig as Cfg
 
 --------------------------------------------------------------------------------
 import           Common.Examples.WebSocketChat.Message
@@ -54,7 +56,8 @@ app = do
       loggedInEv = fmapMaybe loginEv msgRecEv
     wsRespEv <- prerender (return never) $ do
       let sendEv = fmap ((:[]) . toStrict . encode) msgSendEv
-      ws <- webSocket "ws://localhost:8000/websocketchat" $ def & webSocketConfig_send .~ sendEv
+      Just r <- liftIO $ Cfg.get "config/common/route"
+      ws <- webSocket (T.strip r <> "/websocketchat") $ def & webSocketConfig_send .~ sendEv
       return (_webSocket_recv ws)
     receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] eRecRespTxt
     void $ el "div" $ do

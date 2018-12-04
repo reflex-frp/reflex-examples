@@ -7,23 +7,29 @@
 module Frontend.Examples.WebSocketChat.Main where
 
 import           Control.Monad.IO.Class
-import           Data.Aeson         (encode,decode)
+import qualified Data.Aeson as Aeson
 import           Data.ByteString    as B
 import           Data.ByteString.Lazy (toStrict, fromStrict)
+import           Data.Functor.Sum
+import           Data.List.NonEmpty
+import           Data.Maybe (fromJust)
 import           Data.Monoid        ((<>))
 import qualified Data.Text          as T
 import           Data.Text (Text)
 import           GHCJS.DOM.HTMLElement       (focus)
 import           Language.Javascript.JSaddle
+import           Obelisk.Route
 import           Reflex
 import           Reflex.Dom         hiding (mainWidget)
 import           Reflex.Dom.Core    (mainWidget)
 import           Control.Monad.Fix (MonadFix)
 import           Control.Monad      (void)
 import qualified Obelisk.ExecutableConfig as Cfg
+import           Text.URI
 
 --------------------------------------------------------------------------------
 import           Common.Examples.WebSocketChat.Message
+import           Common.Route
 --------------------------------------------------------------------------------
 
 main :: IO ()
@@ -55,10 +61,27 @@ app = do
       eRecRespTxt = fmap showMsg msgRecEv
       loggedInEv = fmapMaybe loginEv msgRecEv
     wsRespEv <- prerender (return never) $ do
-      let sendEv = fmap ((:[]) . toStrict . encode) msgSendEv
-      Just r <- liftIO $ Cfg.get "config/common/route"
-      ws <- webSocket (T.strip r <> "/websocketchat") $ def & webSocketConfig_send .~ sendEv
-      return (_webSocket_recv ws)
+      case checkEncoder backendRouteEncoder of
+        Left err -> do
+          el "div" $ text err
+          return never
+        Right encoder -> do
+          let wsPath = fst $ encode encoder $ InL BackendRoute_WebSocketChat :/ ()
+              sendEv = fmap ((:[]) . toStrict . Aeson.encode) msgSendEv
+          r <- liftIO $ Cfg.get "config/common/route"
+          let mUri = do 
+                uri' <- mkURI =<< r 
+                pathPiece <- mapM mkPathPiece wsPath
+                wsScheme <- mkScheme "ws"
+                return $ uri' 
+                  { uriPath = Just (False, fromJust $ nonEmpty pathPiece)
+                  , uriScheme = Just wsScheme
+                  }
+          case mUri of
+            Nothing -> return never
+            Just uri -> do 
+              ws <- webSocket (render uri) $ def & webSocketConfig_send .~ sendEv
+              return (_webSocket_recv ws)
     receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] eRecRespTxt
     void $ el "div" $ do
       el "p" $ text "Responses from the backend chat -server:"
@@ -70,7 +93,7 @@ app = do
       _ -> Nothing
 
     decodeOneMsg :: B.ByteString -> Maybe S2C
-    decodeOneMsg = decode . fromStrict
+    decodeOneMsg = Aeson.decode . fromStrict
 
     showMsg :: S2C -> Text
     showMsg = \case

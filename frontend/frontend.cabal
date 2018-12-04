@@ -7,6 +7,7 @@ library
   hs-source-dirs: src
   build-depends: base
                , common
+               , obelisk-executable-config
                , obelisk-frontend
                , obelisk-route
                , modern-uri
@@ -25,6 +26,7 @@ executable frontend
                , obelisk-frontend
                , obelisk-route
                , reflex-dom
+               , obelisk-executable-config
                , obelisk-generated-static
                , frontend
   --TODO: Make these ghc-options optional

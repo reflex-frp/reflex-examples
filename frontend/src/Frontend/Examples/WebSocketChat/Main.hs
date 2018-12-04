@@ -12,7 +12,6 @@ import           Data.ByteString    as B
 import           Data.ByteString.Lazy (toStrict, fromStrict)
 import           Data.Functor.Sum
 import           Data.List.NonEmpty
-import           Data.Maybe (fromJust)
 import           Data.Monoid        ((<>))
 import qualified Data.Text          as T
 import           Data.Text (Text)
@@ -69,17 +68,20 @@ app = do
           let wsPath = fst $ encode encoder $ InL BackendRoute_WebSocketChat :/ ()
               sendEv = fmap ((:[]) . toStrict . Aeson.encode) msgSendEv
           r <- liftIO $ Cfg.get "config/common/route"
-          let mUri = do 
-                uri' <- mkURI =<< r 
-                pathPiece <- mapM mkPathPiece wsPath
-                wsScheme <- mkScheme "ws"
-                return $ uri' 
-                  { uriPath = Just (False, fromJust $ nonEmpty pathPiece)
+          let mUri = do
+                uri' <- mkURI =<< r
+                pathPiece <- nonEmpty =<< mapM mkPathPiece wsPath
+                httpsScheme <- mkScheme "https"
+                wsScheme <- case uriScheme uri' of
+                  Just rtextScheme | rtextScheme == httpsScheme -> mkScheme "wss"
+                  _ -> mkScheme "ws"
+                return $ uri'
+                  { uriPath = Just (False, pathPiece)
                   , uriScheme = Just wsScheme
                   }
           case mUri of
             Nothing -> return never
-            Just uri -> do 
+            Just uri -> do
               ws <- webSocket (render uri) $ def & webSocketConfig_send .~ sendEv
               return (_webSocket_recv ws)
     receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] eRecRespTxt

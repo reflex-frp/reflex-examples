@@ -71,10 +71,10 @@ app = do
           let mUri = do
                 uri' <- mkURI =<< r
                 pathPiece <- nonEmpty =<< mapM mkPathPiece wsPath
-                httpsScheme <- mkScheme "https"
                 wsScheme <- case uriScheme uri' of
-                  Just rtextScheme | rtextScheme == httpsScheme -> mkScheme "wss"
-                  _ -> mkScheme "ws"
+                  rtextScheme | rtextScheme == mkScheme "https" -> mkScheme "wss"
+                  rtextScheme | rtextScheme == mkScheme "http" -> mkScheme "ws"
+                  _ -> Nothing
                 return $ uri'
                   { uriPath = Just (False, pathPiece)
                   , uriScheme = Just wsScheme

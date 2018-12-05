@@ -6,6 +6,8 @@ build-type: Simple
 library
   hs-source-dirs: src
   build-depends: base
+               , aeson
+               , dependent-sum
                , obelisk-route
                , mtl
                , text
@@ -13,3 +15,4 @@ library
   exposed-modules:
     Common.Api
     Common.Route
+    Common.Examples.WebSocketChat.Message

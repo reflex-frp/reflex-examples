@@ -8,13 +8,19 @@ library
   if impl(ghcjs)
     buildable: False
   build-depends: base
+               , aeson
+               , bytestring
                , common
+               , dependent-sum
                , frontend
                , obelisk-backend
                , obelisk-route
+               , text
+               , websockets
                , websockets-snap
   exposed-modules:
     Backend
+    Backend.Examples.WebSocketChat.Server
   ghc-options: -Wall
 
 executable backend

@@ -6,16 +6,39 @@ build-type: Simple
 library
   hs-source-dirs: src
   build-depends: base
+               , aeson
+               , array
+               , bytestring
                , common
+               , containers
+               , ghcjs-dom
+               , jsaddle
                , obelisk-executable-config
                , obelisk-frontend
                , obelisk-route
+               , lens
                , modern-uri
+               , reflex
                , reflex-dom
                , obelisk-generated-static
                , text
+               , universe
   exposed-modules:
     Frontend
+    Frontend.FontAwesome
+    Frontend.Head
+    Frontend.Home
+    Frontend.Nav
+    Frontend.Examples.BasicToDo.Main
+    Frontend.Examples.DisplayGameUpdates.Main
+    Frontend.Examples.DragAndDrop.Main
+    Frontend.Examples.FileReader.Main
+    Frontend.Examples.NasaPod.Main
+    Frontend.Examples.PegSolitaire.Main
+    Frontend.Examples.ScreenKeyboard.Main
+    Frontend.Examples.TicTacToe.Main
+    Frontend.Examples.WebSocketChat.Main
+    Frontend.Examples.WebSocketEcho.Main
   ghc-options: -Wall
 
 executable frontend

@@ -168,7 +168,7 @@ routeSourceCode = \case
 exampleSourceCode :: R Example -> Text
 exampleSourceCode (sec :=> _) = base <> path <> file
   where
-    base = "https://github.com/reflex-frp/reflex-examples/blob/master/frontend/src/Examples/"
+    base = "https://github.com/reflex-frp/reflex-examples/blob/master/frontend/src/Frontend/Examples/"
     file = "/Main.hs"
     path = case sec of
       Example_BasicToDo -> "BasicToDo"

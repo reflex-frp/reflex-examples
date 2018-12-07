@@ -17,10 +17,13 @@ library
                , obelisk-route
                , text
                , websockets
+               , time
+               , containers
                , websockets-snap
   exposed-modules:
     Backend
     Backend.Examples.WebSocketChat.Server
+    Backend.Examples.ECharts.Server
   ghc-options: -Wall
 
 executable backend

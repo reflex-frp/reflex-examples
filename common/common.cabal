@@ -10,9 +10,11 @@ library
                , dependent-sum
                , obelisk-route
                , mtl
+               , dependent-sum
                , text
 
   exposed-modules:
     Common.Api
     Common.Route
     Common.Examples.WebSocketChat.Message
+    Common.Examples.ECharts.Types

@@ -14,6 +14,7 @@ import Obelisk.Route.Frontend
 import Reflex.Dom.Core
 
 import Control.Monad.Fix (MonadFix)
+import Control.Monad.IO.Class
 import Common.Route
 
 import Frontend.Head
@@ -28,6 +29,7 @@ import qualified Frontend.Examples.NasaPod.Main as NasaPod
 import qualified Frontend.Examples.PegSolitaire.Main as PegSolitaire
 import qualified Frontend.Examples.TicTacToe.Main as TicTacToe
 import qualified Frontend.Examples.DisplayGameUpdates.Main as DisplayGameUpdates
+import qualified Frontend.Examples.ECharts.Main as ECharts
 import qualified Frontend.Examples.WebSocketEcho.Main as WebSocketEcho
 import qualified Frontend.Examples.WebSocketChat.Main as WebSocketChat
 
@@ -51,6 +53,7 @@ examples
      , PerformEvent t m
      , TriggerEvent t m
      , Prerender js m
+     , MonadIO m
      )
   => Dynamic t (R Example)
   -> RoutedT t (R Example) m ()
@@ -63,6 +66,7 @@ examples _ = subRoute_ $ \case
   Example_PegSolitaire -> PegSolitaire.app
   Example_TicTacToe -> TicTacToe.app
   Example_DisplayGameUpdates -> DisplayGameUpdates.app
+  Example_ECharts -> ECharts.app
   Example_WebSocketEcho -> WebSocketEcho.app
   Example_WebSocketChat -> WebSocketChat.app
 

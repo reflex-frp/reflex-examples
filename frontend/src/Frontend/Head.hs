@@ -21,6 +21,7 @@ pageHead = do
   styleSheet $ static @"css/fontawesome.min.css"
   styleSheet $ static @"css/font.css"
   styleSheet $ static @"css/style.css"
+  elAttr "script" ("type" =: "text/javascript" <> "src" =: static @"echarts.min.js") blank
 
 -- | Link to icons for this page (favicons, etc.)
 pageIcons :: DomBuilder t m => m ()

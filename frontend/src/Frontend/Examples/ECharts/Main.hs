@@ -14,8 +14,8 @@ import Frontend.Examples.ECharts.ExamplesData (rainfallData, waterFlowData)
 import Common.Examples.ECharts.Types
 
 import qualified Obelisk.ExecutableConfig
-import Network.URI (parseURI, URI(..), URIAuth(..))
 
+import Data.ByteString.Lazy (toStrict, fromStrict)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.Fix (MonadFix)
 import Data.Map (Map)
@@ -35,11 +35,18 @@ import Data.Aeson (FromJSON, parseJSON, genericParseJSON, defaultOptions, fieldL
 import qualified Data.ByteString.Lazy as LBS
 import Obelisk.Generated.Static
 import Language.Javascript.JSaddle (JSException(..), catch, JSVal, toJSVal, JSM, MonadJSM, liftJSM, valToText)
+import Data.ByteString (ByteString)
 
+import Data.List.NonEmpty (nonEmpty)
+import Text.URI
 import Reflex.Dom.Core
+import Obelisk.Route
+import Common.Route
+import Data.Functor.Sum
 
 app
-  :: ( DomBuilder t m
+  :: forall t m js .
+     ( DomBuilder t m
      , MonadFix m
      , MonadHold t m
      , PostBuild t m
@@ -48,15 +55,35 @@ app
      , Prerender js m
      , MonadIO m
      )
-  => m ()
-app = do
-    Just r <- liftIO $ Obelisk.ExecutableConfig.get "config/common/route"
+  => Maybe Text
+  -> m ()
+app r = do
     prerender blank $ do
-      let Just (URI scheme (Just auth)  _ _ _) = parseURI $ T.unpack $ T.strip r
-          wsScheme = case scheme of
-            "https:" -> "wss:"
-            _ -> "ws:"
-          wsUrl = T.pack $ wsScheme <> (uriRegName auth) <> (uriPort auth) <> "/cpustats"
+      wsRespEv <- prerender (return never) $ do
+        case checkEncoder backendRouteEncoder of
+          Left err -> do
+            el "div" $ text err
+            return never
+          Right encoder -> do
+            let wsPath = fst $ encode encoder $ InL BackendRoute_EChartsCpuStats :/ ()
+            let mUri = do
+                  uri' <- mkURI =<< r
+                  pathPiece <- nonEmpty =<< mapM mkPathPiece wsPath
+                  wsScheme <- case uriScheme uri' of
+                    rtextScheme | rtextScheme == mkScheme "https" -> mkScheme "wss"
+                    rtextScheme | rtextScheme == mkScheme "http" -> mkScheme "ws"
+                    _ -> Nothing
+                  return $ uri'
+                    { uriPath = Just (False, pathPiece)
+                    , uriScheme = Just wsScheme
+                    }
+            case mUri of
+              Nothing -> return never
+              Just uri -> do
+                ws <- webSocket (render uri) $ def
+                  & webSocketConfig_send .~ (never :: Event t [Text])
+                return (_webSocket_recv ws)
+
       dEv <- do
         pb <- getPostBuild
         d1 <- holdDyn Nothing
@@ -69,7 +96,7 @@ app = do
           _ -> Nothing
 
       clEv <- button "Show Dynamic Chart"
-      widgetHold blank $ echarts wsUrl <$ clEv
+      widgetHold blank $ echarts wsRespEv <$ clEv
       widgetHold blank $ seriesExamples (mkStdGen 0) <$> dEv
       blank
 
@@ -86,13 +113,12 @@ echarts
      , HasJSContext m
      , MonadJSM m
      )
-  => Text
+  => Event t ByteString
   -> m ()
-echarts wsUrl = el "main" $ do
-  ws <- webSocket wsUrl $ def & webSocketConfig_send .~ (never :: Event t [Text])
+echarts wsRespEv = el "main" $ do
   receivedMessages :: Dynamic t [(UTCTime, CpuStat Double)] <- foldDyn (\m ms -> case Aeson.decode (LBS.fromStrict m) of
     Nothing -> ms
-    Just m' -> take 50 $ m' : ms) [] $ _webSocket_recv ws
+    Just m' -> take 50 $ m' : ms) [] $ wsRespEv
   let cpuStatMap (t, c) = mconcat
         [ "user" =: [(t, _cpuStat_user c)]
         , "nice" =: [(t, _cpuStat_nice c)]

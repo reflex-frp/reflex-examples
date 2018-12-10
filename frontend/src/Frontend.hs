@@ -13,6 +13,9 @@ import Obelisk.Route
 import Obelisk.Route.Frontend
 import Reflex.Dom.Core
 
+import qualified Obelisk.ExecutableConfig as Cfg
+import Data.Text (Text)
+
 import Control.Monad.Fix (MonadFix)
 import Control.Monad.IO.Class
 import Common.Route
@@ -37,10 +40,11 @@ frontend :: Frontend (R FrontendRoute)
 frontend = Frontend
   { _frontend_head = pageHead
   , _frontend_body = do
+      r <- liftIO $ Cfg.get "config/common/route"
       el "header" $ nav
       el "main" $ article $ subRoute_ $ \case
         FrontendRoute_Home -> home
-        FrontendRoute_Examples -> maybeRoute_ home $ examples =<< askRoute
+        FrontendRoute_Examples -> maybeRoute_ home $ examples r =<< askRoute
       return ()
   }
 
@@ -55,9 +59,10 @@ examples
      , Prerender js m
      , MonadIO m
      )
-  => Dynamic t (R Example)
+  => Maybe Text
+  -> Dynamic t (R Example)
   -> RoutedT t (R Example) m ()
-examples _ = subRoute_ $ \case
+examples route _ = subRoute_ $ \case
   Example_BasicToDo -> BasicToDo.app
   Example_DragAndDrop -> DragAndDrop.app
   Example_FileReader -> FileReader.app
@@ -66,9 +71,9 @@ examples _ = subRoute_ $ \case
   Example_PegSolitaire -> PegSolitaire.app
   Example_TicTacToe -> TicTacToe.app
   Example_DisplayGameUpdates -> DisplayGameUpdates.app
-  Example_ECharts -> ECharts.app
+  Example_ECharts -> ECharts.app route
   Example_WebSocketEcho -> WebSocketEcho.app
-  Example_WebSocketChat -> WebSocketChat.app
+  Example_WebSocketChat -> WebSocketChat.app route
 
 -- | An @<article>@ tag that will set its title and the class of its child
 -- @<section>@ based on the current route

@@ -31,11 +31,6 @@ import           Common.Examples.WebSocketChat.Message
 import           Common.Route
 --------------------------------------------------------------------------------
 
-main :: IO ()
-main = run $ mainWidget app
-
---------------------------------------------------------------------------------
-
 -- TODO
 --  - factor out the performEvents (see keyboard -example)
 --  - factor out the message forming
@@ -50,8 +45,9 @@ app
      , TriggerEvent t m
      , Prerender js m
      )
-  => m ()
-app = do
+  => Maybe Text
+  -> m ()
+app r = do
   rec
     msgEvDyn <- widgetHold loginWidget (messagingWidget <$ loggedInEv)
     let
@@ -67,7 +63,6 @@ app = do
         Right encoder -> do
           let wsPath = fst $ encode encoder $ InL BackendRoute_WebSocketChat :/ ()
               sendEv = fmap ((:[]) . toStrict . Aeson.encode) msgSendEv
-          r <- liftIO $ Cfg.get "config/common/route"
           let mUri = do
                 uri' <- mkURI =<< r
                 pathPiece <- nonEmpty =<< mapM mkPathPiece wsPath

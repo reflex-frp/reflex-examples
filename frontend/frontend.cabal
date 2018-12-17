@@ -21,7 +21,7 @@ library
                , reflex
                , reflex-dom
                , obelisk-generated-static
-               , echarts
+               , reflex-dom-echarts
                , random
                , scientific
                , time

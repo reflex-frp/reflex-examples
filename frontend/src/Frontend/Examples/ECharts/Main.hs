@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Frontend.Examples.ECharts.Main where
 
-import ECharts hiding (ffor)
+import Reflex.Dom.Widget.ECharts
 
 import Frontend.Examples.ECharts.ExamplesData (rainfallData, waterFlowData)
 import Common.Examples.ECharts.Types
@@ -18,6 +18,7 @@ import qualified Obelisk.ExecutableConfig
 import Data.ByteString.Lazy (toStrict, fromStrict)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.Fix (MonadFix)
+import Control.Monad (void)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
@@ -53,386 +54,458 @@ app
      , PerformEvent t m
      , TriggerEvent t m
      , Prerender js m
-     , MonadIO m
      )
   => Maybe Text
   -> m ()
-app r = do
-    prerender blank $ do
-      wsRespEv <- prerender (return never) $ do
-        case checkEncoder backendRouteEncoder of
-          Left err -> do
-            el "div" $ text err
-            return never
-          Right encoder -> do
-            let wsPath = fst $ encode encoder $ InL BackendRoute_EChartsCpuStats :/ ()
-            let mUri = do
-                  uri' <- mkURI =<< r
-                  pathPiece <- nonEmpty =<< mapM mkPathPiece wsPath
-                  wsScheme <- case uriScheme uri' of
-                    rtextScheme | rtextScheme == mkScheme "https" -> mkScheme "wss"
-                    rtextScheme | rtextScheme == mkScheme "http" -> mkScheme "ws"
-                    _ -> Nothing
-                  return $ uri'
-                    { uriPath = Just (False, pathPiece)
-                    , uriScheme = Just wsScheme
-                    }
-            case mUri of
-              Nothing -> return never
-              Just uri -> do
-                ws <- webSocket (render uri) $ def
-                  & webSocketConfig_send .~ (never :: Event t [Text])
-                return (_webSocket_recv ws)
-
-      dEv <- do
-        pb <- getPostBuild
-        d1 <- holdDyn Nothing
-          =<< getAndDecode ((static @"data/confidence-band.json") <$ pb)
-        d2 <- holdDyn Nothing
-          =<< getAndDecode ((static @"data/aqi-beijing.json") <$ pb)
-        let d = (,) <$> d1 <*> d2
-        return $ fforMaybe (updated d) $ \case
-          (Just v1, Just v2) -> Just (v1, v2)
-          _ -> Nothing
-
-      clEv <- button "Show Dynamic Chart"
-      widgetHold blank $ echarts wsRespEv <$ clEv
-      widgetHold blank $ seriesExamples (mkStdGen 0) <$> dEv
-      blank
-
-echarts
-  :: forall t m.
-     ( DomBuilder t m
-     , PostBuild t m
-     , PerformEvent t m
-     , MonadJSM (Performable m)
-     , GhcjsDomSpace ~ DomBuilderSpace m
-     , MonadHold t m
-     , MonadFix m
-     , TriggerEvent t m
-     , HasJSContext m
-     , MonadJSM m
-     )
-  => Event t ByteString
-  -> m ()
-echarts wsRespEv = el "main" $ do
-  receivedMessages :: Dynamic t [(UTCTime, CpuStat Double)] <- foldDyn (\m ms -> case Aeson.decode (LBS.fromStrict m) of
-    Nothing -> ms
-    Just m' -> take 50 $ m' : ms) [] $ wsRespEv
-  let cpuStatMap (t, c) = mconcat
-        [ "user" =: [(t, _cpuStat_user c)]
-        , "nice" =: [(t, _cpuStat_nice c)]
-        , "system" =: [(t, _cpuStat_system c)]
-        , "idle" =: [(t, _cpuStat_idle c)]
-        , "iowait" =: [(t, _cpuStat_iowait c)]
-        , "irq" =: [(t, _cpuStat_irq c)]
-        , "softirq" =: [(t, _cpuStat_softirq c)]
-        , "steal" =: [(t, _cpuStat_steal c)]
-        , "guest" =: [(t, _cpuStat_guest c)]
-        , "guestNice" =: [(t, _cpuStat_guestNice c)]
-        ]
-  dynamicTimeSeries "CPU Stats" $ Map.unionsWith (++) . fmap cpuStatMap . reverse <$> receivedMessages
-
-dynamicTimeSeries
-  :: ( DomBuilder t m
-     , PerformEvent t m
-     , PostBuild t m
-     , MonadHold t m
-     , MonadJSM (Performable m)
-     , GhcjsDomSpace ~ DomBuilderSpace m
-     )
-  => Text
-  -> Dynamic t (Map Text [(UTCTime, Double)])
-  -> m ()
-dynamicTimeSeries title ts = do
-  e <- fst <$> elAttr' "div" ("style" =: "width:600px; height:400px;") blank
-  p <- getPostBuild
-  chart <- performEvent $ ffor p $ \_ -> liftJSM $ ECharts.initECharts $ _element_raw e
-  let opts0 = def
-        { _chartOptions_title = Just $ def { _title_text = Just title }
-        , _chartOptions_xAxis = def { _axis_type = Just AxisType_Time } :[]
-        , _chartOptions_yAxis = def { _axis_type = Just AxisType_Value
-                                    , _axis_min = Just $ Left 0
-                                    , _axis_max = Just $ Left 101
-                                    } :[]
-        , _chartOptions_series = []
-        }
-  performEvent_ $ ffor chart $ \c -> liftJSM $ setOptionWithCatch c opts0
-  mchart <- holdDyn Nothing $ Just <$> chart
-  let opts = leftmost
-        [ attach (current mchart) $ updated ts
-        , attachWith (\t c -> (c, t)) (current ts) (updated mchart)
-        ]
-  performEvent_ $ fforMaybe opts $ \case
-    (Nothing, _) -> Nothing
-    (Just c, ts') -> Just $ liftJSM $ setOptionWithCatch c $ opts0
-      { _chartOptions_series = ffor (reverse $ Map.toList ts') $ \(k, vs) -> Some.This $
-        SeriesT_Line $ def
-          & series_name ?~ k
-          & series_smooth ?~ Right (0.7)
-          & series_data ?~ (ffor vs $ \(t, v) -> def
-            & data_name ?~ utcTimeToEpoch t
-            & data_value ?~ (utcTimeToEpoch t, v)
-                           )
-      }
-
-setOptionWithCatch :: ECharts -> ChartOptions -> JSM ()
-setOptionWithCatch c o = setOption c o `catch` \(JSException e) -> (valToText e) >>= (liftIO . putStrLn . show) >> return ()
-
-seriesExamples
-  :: ( DomBuilder t m
-     , PerformEvent t m
-     , PostBuild t m
-     , MonadHold t m
-     , TriggerEvent t m
-     , MonadFix m
-     , MonadJSM (Performable m)
-     , GhcjsDomSpace ~ DomBuilderSpace m
-     , MonadIO m
-     , RandomGen g
-     )
-  => g
-  -> ([ConfidenceData], AqiData)
-  -> m ()
-seriesExamples rGen (confData, aqiData) = elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $
-  mapM_ renderChartOptions
+app r = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
+  do
+    ev <- button "Show Dynamic Timeline series"
+    widgetHold blank $ ffor ev $ \_ -> do
+      ws <- cpuStatWebSocket r
+      void $ wrap $ cpuStatTimeLineChart ws
+  mapM_ wrap
     [ basicLineChart
-    , basicAreaChart
-    , smoothedLineChart
     , stackedAreaChart
     , rainfall
-    , largeScaleAreaChart rGen
-    , confidenceBand confData
-    , rainfallAndWaterFlow
-    , aqiChart aqiData
     , multipleXAxes
+    , largeScaleAreaChart
     ]
 
-renderChartOptions
-  :: ( DomBuilder t m
+  dEv <- do
+    pb <- getPostBuild
+    d1 <- holdDyn Nothing
+      =<< getAndDecode ((static @"data/confidence-band.json") <$ pb)
+    -- d2 <- holdDyn Nothing
+    --   =<< getAndDecode ((static @"data/aqi-beijing.json") <$ pb)
+    -- let d = (,) <$> d1 <*> d2
+    return $ fforMaybe (updated d1) id
+  widgetHold blank $ ffor dEv $ \c -> do
+    void $ wrap $ confidenceBand c
+  return ()
+  where
+    wrap m = elAttr "div" ("style" =: "padding: 50px;") m
+
+tickWithSpeedSelector
+  :: ( PostBuild t m
+     , DomBuilder t m
      , PerformEvent t m
-     , PostBuild t m
+     , MonadFix m
      , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , TriggerEvent t m
+     , MonadIO (Performable m)
+     )
+  => m (Event t TickInfo)
+tickWithSpeedSelector = do
+  r <- rangeInput $ def
+    & rangeInputConfig_initialValue .~ 1
+    & rangeInputConfig_attributes .~ constDyn (("min" =: "0.1") <> ("max" =: "2") <> ("step" =: "0.1"))
+  dyn ((\v -> tickLossyFromPostBuildTime (fromRational $ toRational v)) <$> (value r))
+    >>= switchHold never
+
+basicLineChart
+  :: ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
      , TriggerEvent t m
      , MonadFix m
-     , MonadIO m
+     , MonadIO (Performable m)
+     , MonadJSM m
      , MonadJSM (Performable m)
-     , GhcjsDomSpace ~ DomBuilderSpace m
      )
-  => ChartOptions
-  -> m ()
-renderChartOptions opts = do
-  chart <- do
-    e <- fst <$> elAttr' "div" ("style" =: "width:600px; height:400px; padding: 50px;") blank
-    p <- getPostBuild
-    performEvent $ ffor p $ \_ -> liftJSM $ ECharts.initECharts $ _element_raw e
-  performEvent_ $ ffor chart $ \c -> do
-    liftJSM $ setOptionWithCatch c opts
+  => m (Chart)
+basicLineChart = do
+  tick <- tickWithSpeedSelector
+  let
+    f _ m = Map.fromList $ zip xAxisData $ ls ++ [l]
+      where (l:ls) = map (\x -> Map.findWithDefault (DataInt 0) x m) xAxisData
+  dd <- do
+    cb <- el "div" $ do
+      el "label" $ text "Dynamic line 1"
+      checkbox False def
+    let ev = gate (current $ value cb) tick
+    foldDyn f yAxisData ev
+  dd2 <- do
+    cb <- el "div" $ do
+      el "label" $ text "Dynamic line 2"
+      checkbox False def
+    let ev = gate (current $ value cb) tick
+    foldDyn f yAxisData2 ev
 
-  -- widgetHold blank $ ffor chart getRenderTime
-  blank
-  -- where
-  --   getRenderTime c = do
-  --     clEv <- button "Make Dynamic"
-  --     widgetHold blank $ ffor clEv $ \_ -> do
-  --       ev <- tickLossyFromPostBuildTime 0.2
-  --       performEvent_ $ ffor ev $ \_ -> do
-  --         t1 <- liftIO $ getCurrentTime
-  --         liftJSM $ setOptionWithCatch c opts
-  --         t2 <- liftIO $ getCurrentTime
-  --         liftIO $ putStrLn $ show (diffUTCTime t2 t1)
-  --     blank
+  xd <- do
+    cb <- el "div" $ do
+      el "label" $ text "X-axis"
+      checkbox False def
+    let ev = gate (current $ value cb) tick
+    foldDyn (\_ (l:ls) -> ls ++ [l]) xAxisData ev
 
-basicLineChart :: ChartOptions
-basicLineChart = def
-  { _chartOptions_xAxis = [def { _axis_type = Just AxisType_Category
-                              , _axis_data = Just $ zip xAxisData $ repeat Nothing}
-                          ]
-  , _chartOptions_yAxis = [def { _axis_type = Just AxisType_Value }]
-  , _chartOptions_series = [Some.This $ SeriesT_Line $ def
-    & series_data ?~ (map DataInt yAxisData)]
-  }
+  let chartDataDyn = (0 =: (def, dd, xd)) <> (1 =: (dd2Series, dd2, xd))
+      dd2Series = def
+        & series_smooth ?~ Left True
+        & series_areaStyle ?~ def
+
+  lineChart (LineChartConfig (600, 400)
+              (constDyn basicLineChartOpts)
+              chartDataDyn
+            )
   where
+    yAxisData = Map.fromList $ zip xAxisData $ map DataInt $ reverse [820, 932, 901, 934, 1290, 1330, 1320]
+    yAxisData2 = Map.fromList $ zip xAxisData $ map DataInt $ [820, 932, 901, 934, 1290, 1330, 1320]
     xAxisData = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    yAxisData = [820, 932, 901, 934, 1290, 1330, 1320]
+    basicLineChartOpts :: ChartOptions
+    basicLineChartOpts = def
+      & chartOptions_yAxis .~ (def
+        & axis_type ?~ AxisType_Value
+        ) : []
+      & chartOptions_xAxis .~ (def
+        & axis_type ?~ AxisType_Category
+        & axis_data ?~ (zip xAxisData $ repeat Nothing)
+        ) : []
 
-basicAreaChart :: ChartOptions
-basicAreaChart = def
-  { _chartOptions_xAxis = [def { _axis_type = Just AxisType_Category
-                              , _axis_data = Just $ zip xAxisData $ repeat Nothing
-                              , _axis_boundaryGap = Just $ Left False
-                              }
-                          ]
-  , _chartOptions_yAxis = [def { _axis_type = Just AxisType_Value }]
-  , _chartOptions_series = [Some.This $ SeriesT_Line $ def
-    & series_data ?~ (map DataInt yAxisData)
-    & series_areaStyle ?~ def ]
-  }
+multipleXAxes
+  :: ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , MonadFix m
+     , MonadJSM m
+     , MonadJSM (Performable m)
+     )
+  => m (Chart)
+multipleXAxes =
+  lineChart $ LineChartConfig (600, 400) (constDyn multipleXAxesOpts)
+    (chartDataDyn)
   where
-    xAxisData = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    yAxisData = [820, 932, 901, 934, 1290, 1330, 1320]
+    chartDataDyn = (0 =: (s1, constDyn y1, constDyn x1)) <> (1 =: (s2, constDyn y2, constDyn x2))
+    s1 = def
+      & series_smooth ?~ Left True
+      & series_name ?~ xSeriesName1
+      & series_xAxisIndex ?~ 1
+    s2 = def
+      & series_smooth ?~ Left True
+      & series_name ?~ xSeriesName2
+    xSeriesName1 = "2015"
+    xSeriesName2 = "2016"
+    colors = ["#5793f3", "#d14a61", "#675bba"]
+    y1 = Map.fromList $ zip (months xSeriesName1) $
+      map DataDouble [2.6, 5.9, 9.0, 26.4, 28.7, 70.7, 175.6, 182.2, 48.7, 18.8, 6.0, 2.3]
+    y2 = Map.fromList $ zip (months xSeriesName2) $
+      map DataDouble [3.9, 5.9, 11.1, 18.7, 48.3, 69.2, 231.6, 46.6, 55.4, 18.4, 10.3, 0.7]
+    months y = map (\m -> y <> "-" <> tshow m) [1..12]
+    x1 = months xSeriesName1
+    x2 = months xSeriesName2
 
-smoothedLineChart :: ChartOptions
-smoothedLineChart = def
-  { _chartOptions_xAxis = [def { _axis_type = Just AxisType_Category
-                              , _axis_data = Just $ zip xAxisData $ repeat Nothing}
-                          ]
-  , _chartOptions_yAxis = [def { _axis_type = Just AxisType_Value }]
-  , _chartOptions_series = [Some.This $ SeriesT_Line $ def
-    & series_data ?~ (map DataInt yAxisData)
-    & series_smooth ?~ Left True]
-  }
+    multipleXAxesOpts :: ChartOptions
+    multipleXAxesOpts = def
+      & chartOptions_legend ?~ (def
+        & legend_data ?~ [ (xSeriesName1, def)
+                         , (xSeriesName2, def)
+                         ])
+      & chartOptions_tooltip ?~ (def
+        & toolTip_trigger ?~ "none"
+        & toolTip_axisPointer ?~ (def
+          & axisPointer_type ?~ "Cross"))
+      & chartOptions_grid .~ (def
+        & grid_pos ?~ (def
+          & pos_top ?~ PosAlign_Pixel 70
+          & pos_bottom ?~ PosAlign_Pixel 50)) : []
+      & chartOptions_yAxis .~ (def
+        & axis_type ?~ AxisType_Value) : []
+      & chartOptions_xAxis .~ (def
+        & axis_type ?~ AxisType_Category
+        & axis_axisTick ?~ (def & axisTick_alignWithLabel ?~ True)
+        & axis_axisLine ?~ (def
+          & axisLine_onZero ?~ False
+          & axisLine_lineStyle ?~ (def & lineStyle_color ?~ colors !! 1))
+        -- TODO formatter
+        -- & axis_axisPointer ?~ (def
+        --   & axisPointer_label ?~ def)
+        & axis_data ?~ zip x2 (repeat Nothing))
+      : (def
+        & axis_type ?~ AxisType_Category
+        & axis_axisTick ?~ (def & axisTick_alignWithLabel ?~ True)
+        & axis_axisLine ?~ (def
+          & axisLine_onZero ?~ False
+          & axisLine_lineStyle ?~ (def & lineStyle_color ?~ colors !! 0))
+        -- TODO formatter
+        -- & axis_axisPointer ?~ (def
+        --   & axisPointer_label ?~ def)
+        & axis_data ?~ zip x1 (repeat Nothing)) : []
+
+cpuStatTimeLineChart
+  :: ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadSample t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , MonadFix m
+     , MonadIO (Performable m)
+     , MonadJSM m
+     , MonadJSM (Performable m)
+     )
+  => Event t (UTCTime, CpuStat Double)
+  -> m (Chart)
+cpuStatTimeLineChart ev = do
+  timeLineChart $ TimeLineChartConfig (600, 400) (constDyn opts)
+    chartData
   where
-    xAxisData = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    yAxisData = [820, 932, 901, 934, 1290, 1330, 1320]
-
-stackedAreaChart :: ChartOptions
-stackedAreaChart = def
-  { _chartOptions_title = Just $ def { _title_text = Just title }
-  , _chartOptions_tooltip = Just $ def
-    { _toolTip_trigger = Just "axis"
-    , _toolTip_axisPointer = Just $ def
-      { _axisPointer_type = Just $ "cross"
-      , _axisPointer_label = Just $ def
-        { _label_backgroundColor = Just "#6a7985"
-        }
-      }
-    }
-  , _chartOptions_toolbox = Just $ def
-    { _toolBox_features =
-      [ emptySaveAsImage { _feature_title = Just "Save as PNG" }
+    chartData = Map.fromList $ map (\(t, f) -> (t, (s t, len, g f))) sNames
+    g f = ffor ev $ \(t, c) -> [(t, f c)]
+    s n = def
+      & series_smooth ?~ Left True
+      & series_name ?~ n
+    len = 50
+    opts :: ChartOptions
+    opts = def
+      & chartOptions_title ?~ (def
+        & title_text ?~ "CPU Stats")
+      & chartOptions_yAxis .~ (def
+        & axis_type ?~ AxisType_Value
+        & axis_min ?~ Left 0
+        & axis_max ?~ Left 101
+                              ) : []
+      & chartOptions_xAxis .~ (def
+        & axis_type ?~ AxisType_Time) : []
+    sNames =
+      [ ("user", _cpuStat_user)
+      , ("nice", _cpuStat_nice)
+      , ("system", _cpuStat_system)
+      , ("idle", _cpuStat_idle)
+      , ("iowait", _cpuStat_iowait)
+      , ("irq", _cpuStat_irq)
+      , ("softirq", _cpuStat_softirq)
+      , ("steal", _cpuStat_steal)
+      , ("guest", _cpuStat_guest)
+      , ("guestNice", _cpuStat_guestNice)
       ]
-    }
-  , _chartOptions_legend = Just $ def
-    { _legend_data = Just $ [ ("A", def)
-                            , ("B", def)
-                            , ("C", def)
-                            , ("D", def)
-                            , ("E", def)
-                            ]}
-  , _chartOptions_grid = def
-    { _grid_pos = Just
-      (def { _pos_left = Just $ PosAlign_Percent 3
-                   , _pos_right = Just $ PosAlign_Percent 4
-                   , _pos_bottom = Just $ PosAlign_Percent 3})
-            , _grid_containLabel = Just True
-    } : []
-  , _chartOptions_xAxis = def { _axis_type = Just AxisType_Category
-                              , _axis_data = Just $ zip xAxisData $ repeat Nothing
-                              , _axis_boundaryGap = Just $ Left False} : []
-  , _chartOptions_yAxis = def { _axis_type = Just AxisType_Value
-                              } : []
-  , _chartOptions_series = [l1, l2, l3, l4, l5]
-  }
+
+cpuStatWebSocket
+  :: forall t m js .
+     ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadSample t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , Prerender js m
+     , TriggerEvent t m
+     )
+  => Maybe Text
+  -> m (Event t (UTCTime, CpuStat Double))
+cpuStatWebSocket r = do
+  wsRespEv <- prerender (return never) $ do
+    case checkEncoder backendRouteEncoder of
+      Left err -> do
+        el "div" $ text err
+        return never
+      Right encoder -> do
+        let wsPath = fst $ encode encoder $ InL BackendRoute_EChartsCpuStats :/ ()
+        let mUri = do
+              uri' <- mkURI =<< r
+              pathPiece <- nonEmpty =<< mapM mkPathPiece wsPath
+              wsScheme <- case uriScheme uri' of
+                rtextScheme | rtextScheme == mkScheme "https" -> mkScheme "wss"
+                rtextScheme | rtextScheme == mkScheme "http" -> mkScheme "ws"
+                _ -> Nothing
+              return $ uri'
+                { uriPath = Just (False, pathPiece)
+                , uriScheme = Just wsScheme
+                }
+        case mUri of
+          Nothing -> return never
+          Just uri -> do
+            ws <- webSocket (render uri) $ def
+              & webSocketConfig_send .~ (never :: Event t [Text])
+            return (_webSocket_recv ws)
+  return $ fmapMaybe (Aeson.decode . LBS.fromStrict) wsRespEv
+
+
+stackedAreaChart
+  :: ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , TriggerEvent t m
+     , MonadFix m
+     , MonadIO (Performable m)
+     , MonadJSM m
+     , MonadJSM (Performable m)
+     )
+  => m (Chart)
+stackedAreaChart =
+  lineChart $ LineChartConfig (600, 400) (constDyn opts) $ Map.fromList
+    $ zip [0..] $ map (\(l, d) ->
+                         (l, constDyn $ Map.fromList
+                           (zip xAxisData $ map DataInt d)
+                         , constDyn xAxisData))
+      [ (l1, d1)
+      , (l2, d2)
+      , (l3, d3)
+      , (l4, d4)
+      , (l5, d5)
+      ]
   where
+    opts = def
+      { _chartOptions_title = Just $ def { _title_text = Just title }
+      , _chartOptions_tooltip = Just $ def
+        { _toolTip_trigger = Just "axis"
+        , _toolTip_axisPointer = Just $ def
+          { _axisPointer_type = Just $ "cross"
+          , _axisPointer_label = Just $ def
+            { _label_backgroundColor = Just "#6a7985"
+            }
+          }
+        }
+      , _chartOptions_toolbox = Just $ def
+        { _toolBox_features =
+          [ emptySaveAsImage { _feature_title = Just "Save as PNG" }
+          ]
+        }
+      , _chartOptions_legend = Just $ def
+        { _legend_data = Just $ [ ("A", def)
+                                , ("B", def)
+                                , ("C", def)
+                                , ("D", def)
+                                , ("E", def)
+                                ]}
+      , _chartOptions_grid = def
+        { _grid_pos = Just
+          (def { _pos_left = Just $ PosAlign_Percent 3
+                       , _pos_right = Just $ PosAlign_Percent 4
+                       , _pos_bottom = Just $ PosAlign_Percent 3})
+                , _grid_containLabel = Just True
+        } : []
+      , _chartOptions_xAxis = def { _axis_type = Just AxisType_Category
+                                  , _axis_boundaryGap = Just $ Left False} : []
+      , _chartOptions_yAxis = def { _axis_type = Just AxisType_Value
+                                  } : []
+      }
     title = "Stacked Area Chart"
     xAxisData = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     stackLabel = "stackLabel"
-    l1 = Some.This $ SeriesT_Line $ def
+    l1 :: Series SeriesLine
+    l1 = def
       & series_stack ?~ stackLabel
       & series_name ?~ "A"
       & series_areaStyle ?~ def
-      & series_data ?~
-      (map DataInt [120, 132, 101, 134, 90, 230, 210])
-    l2 = Some.This $ SeriesT_Line $ def
+    d1 = [120, 132, 101, 134, 90, 230, 210]
+    l2 = def
       & series_stack ?~ stackLabel
       & series_name ?~ "B"
       & series_areaStyle ?~ def
-      & series_data ?~
-      (map DataInt [220, 182, 191, 234, 290, 330, 310])
-    l3 = Some.This $ SeriesT_Line $ def
+    d2 = [220, 182, 191, 234, 290, 330, 310]
+    l3 = def
       & series_stack ?~ stackLabel
       & series_name ?~ "C"
       & series_areaStyle ?~ def
-      & series_data ?~
-      (map DataInt [150, 232, 201, 154, 190, 330, 410])
-    l4 = Some.This $ SeriesT_Line $ def
+    d3 = [150, 232, 201, 154, 190, 330, 410]
+    l4 = def
       & series_stack ?~ stackLabel
       & series_name ?~ "D"
       & series_areaStyle ?~ def
-      & series_data ?~
-      (map DataInt [320, 332, 301, 334, 390, 330, 320])
-    l5 = Some.This $ SeriesT_Line $ def
+    d4 = [320, 332, 301, 334, 390, 330, 320]
+    l5 = def
       & series_stack ?~ stackLabel
       & series_name ?~ "E"
       & series_areaStyle ?~ def
       & series_label ?~ def { _label_show = Just True, _label_position = Just $ Position_String "top"}
-      & series_data ?~
-      (map DataInt [820, 932, 901, 934, 1290, 1330, 1320])
+    d5 = [820, 932, 901, 934, 1290, 1330, 1320]
 
-rainfall :: ChartOptions
-rainfall = def
-  { _chartOptions_title = Just $ def
-    {
-      _title_text = Just "Rainfall/Water volume"
-    , _title_subtext = Just "Flow of water and rainfall"
-    , _title_pos = Just $ def {
-        _pos_left = Just $ PosAlign_Align Align_Center
+rainfall
+  :: ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , TriggerEvent t m
+     , MonadFix m
+     , MonadIO (Performable m)
+     , MonadJSM m
+     , MonadJSM (Performable m)
+     )
+  => m (Chart)
+rainfall =
+  lineChart $ LineChartConfig (600, 400) (constDyn opts) $
+    (0 =: (s1, constDyn d1, constDyn xAxisData))
+    <> (1 =: (s2, constDyn d2, constDyn xAxisData))
+  where
+    opts = def
+      { _chartOptions_title = Just $ def
+        {
+          _title_text = Just "Rainfall/Water volume"
+        , _title_subtext = Just "Flow of water and rainfall"
+        , _title_pos = Just $ def {
+            _pos_left = Just $ PosAlign_Align Align_Center
+            }
         }
-    }
-  , _chartOptions_grid = def
-    { _grid_pos = Just $ def { _pos_bottom = Just $ PosAlign_Pixel 80 }
-    } : []
-  , _chartOptions_toolbox = Just $ def
-    { _toolBox_features =
-      [ emptyDataZoom { _feature_yAxisIndex = Just $ Aeson.String "none" }
-      , emptyRestore
-      , emptySaveAsImage
-      ]
-    }
-  , _chartOptions_tooltip = Just $ def
-    { _toolTip_trigger = Just "axis"
-    , _toolTip_axisPointer = Just $ def
-      { _axisPointer_type = Just $ "cross"
-      , _axisPointer_label = Just $ def
-        { _label_backgroundColor = Just "#505765" }
-      }
-    }
-  , _chartOptions_legend = Just $ def
-    { _legend_data = Just $ [ (xSeriesName, def)
-                            , (ySeriesName, def)
-                            ]
-    , _legend_pos = Just $ def {_pos_left = Just $ PosAlign_Align Align_Left }
-    }
-  , _chartOptions_dataZoom =
-    [ def
-      { _dataZoom_show = Just True
-      , _dataZoom_realtime = Just True
-      , _dataZoom_start = Just $ Aeson.Number 65
-      , _dataZoom_end = Just $ Aeson.Number 85
-      }
-    , def
-      { _dataZoom_type = Just "inside"
-      , _dataZoom_realtime = Just True
-      , _dataZoom_start = Just $ Aeson.Number 65
-      , _dataZoom_end = Just $ Aeson.Number 85
-      }
-    ]
-  , _chartOptions_xAxis = def { _axis_type = Just AxisType_Category
-                              , _axis_data = Just $ zip xAxisData $ repeat Nothing
-                              , _axis_axisLine = Just $ def
-                                { _axisLine_onZero = Just False }
-                              , _axis_boundaryGap = Just $ Left False} :[]
-  , _chartOptions_yAxis =
-    [ def { _axis_type = Just AxisType_Value
-          , _axis_name = Just "Water Flow (m^3/s)"
-          , _axis_max = Just $ Left 500
+      , _chartOptions_grid = def
+        { _grid_pos = Just $ def { _pos_bottom = Just $ PosAlign_Pixel 80 }
+        } : []
+      , _chartOptions_toolbox = Just $ def
+        { _toolBox_features =
+          [ emptyDataZoom { _feature_yAxisIndex = Just $ Aeson.String "none" }
+          , emptyRestore
+          , emptySaveAsImage
+          ]
+        }
+      , _chartOptions_tooltip = Just $ def
+        { _toolTip_trigger = Just "axis"
+        , _toolTip_axisPointer = Just $ def
+          { _axisPointer_type = Just $ "cross"
+          , _axisPointer_label = Just $ def
+            { _label_backgroundColor = Just "#505765" }
           }
-    , def { _axis_type = Just AxisType_Value
-          , _axis_name = Just "Rainfall (mm)"
-          , _axis_max = Just $ Left 5
-          , _axis_inverse = Just $ True
-          , _axis_nameLocation = Just $ AxisNameLocation_Start
+        }
+      , _chartOptions_legend = Just $ def
+        { _legend_data = Just $ [ (xSeriesName, def)
+                                , (ySeriesName, def)
+                                ]
+        , _legend_pos = Just $ def {_pos_left = Just $ PosAlign_Align Align_Left }
+        }
+      , _chartOptions_dataZoom =
+        [ def
+          { _dataZoom_show = Just True
+          , _dataZoom_realtime = Just True
+          , _dataZoom_start = Just $ Aeson.Number 65
+          , _dataZoom_end = Just $ Aeson.Number 85
           }
-    ]
-  , _chartOptions_series =
-    [ Some.This $ SeriesT_Line $ def
-        & series_data ?~ (map DataDouble waterFlowData)
-        & series_name ?~ xSeriesName
-        & series_animation ?~ False
-        & series_areaStyle ?~ def
-        & series_lineStyle ?~ def { _lineStyle_width = Just 1 }
-        & series_markArea ?~ def
+        , def
+          { _dataZoom_type = Just "inside"
+          , _dataZoom_realtime = Just True
+          , _dataZoom_start = Just $ Aeson.Number 65
+          , _dataZoom_end = Just $ Aeson.Number 85
+          }
+        ]
+      , _chartOptions_xAxis = def { _axis_type = Just AxisType_Category
+                                  , _axis_axisLine = Just $ def
+                                    { _axisLine_onZero = Just False }
+                                  , _axis_boundaryGap = Just $ Left False} :[]
+      , _chartOptions_yAxis =
+        [ def { _axis_type = Just AxisType_Value
+              , _axis_name = Just "Water Flow (m^3/s)"
+              , _axis_max = Just $ Left 500
+              }
+        , def { _axis_type = Just AxisType_Value
+              , _axis_name = Just "Rainfall (mm)"
+              , _axis_max = Just $ Left 5
+              , _axis_inverse = Just $ True
+              , _axis_nameLocation = Just $ AxisNameLocation_Start
+              }
+        ]
+      }
+
+    d1 = Map.fromList $ zip xAxisData $ map DataDouble waterFlowData
+    s1 = def
+      & series_name ?~ xSeriesName
+      & series_animation ?~ False
+      & series_areaStyle ?~ def
+      & series_lineStyle ?~ def { _lineStyle_width = Just 1 }
+      & series_markArea ?~ def
         { _markArea_silent = Just True
         , _markArea_data = Just $ Aeson.Array $ V.singleton $ Aeson.Array $ V.fromList
             [ Aeson.Object $ HashMap.singleton "xAxis"
@@ -441,14 +514,14 @@ rainfall = def
               (Aeson.String $ dateF 9 22 7)
             ]
         }
-    , Some.This $ SeriesT_Line $ def
-        & series_data ?~ (map DataDouble rainfallData)
-        & series_name ?~ ySeriesName
-        & series_yAxisIndex ?~ 1
-        & series_animation ?~ False
-        & series_areaStyle ?~ def
-        & series_lineStyle ?~ def { _lineStyle_width = Just 1 }
-        & series_markArea ?~ def
+    d2 = Map.fromList $ zip xAxisData $ map DataDouble rainfallData
+    s2 = def
+      & series_name ?~ ySeriesName
+      & series_yAxisIndex ?~ 1
+      & series_animation ?~ False
+      & series_areaStyle ?~ def
+      & series_lineStyle ?~ def { _lineStyle_width = Just 1 }
+      & series_markArea ?~ def
         { _markArea_silent = Just True
         , _markArea_data = Just $ Aeson.Array $ V.singleton $ Aeson.Array $ V.fromList
             [ Aeson.Object $ HashMap.singleton "xAxis"
@@ -457,9 +530,6 @@ rainfall = def
               (Aeson.String $ dateF 9 20 7)
             ]
         }
-    ]
-  }
-  where
     xSeriesName = "Water flow"
     ySeriesName = "Rainfall"
     xAxisData = [dateF 6 12 t | t <- [2..23]]
@@ -474,76 +544,88 @@ rainfall = def
 tshow :: (Show a) => a -> Text
 tshow = T.pack . show
 
-largeScaleAreaChart :: RandomGen g => g -> ChartOptions
-largeScaleAreaChart rGen = def
-  { _chartOptions_title = Just $ def
-    {
-      _title_text = Just "Large Scale Area Chart"
-    , _title_pos = Just $ def {
-        _pos_left = Just $ PosAlign_Align Align_Center
-        }
-    }
-  , _chartOptions_tooltip = Just $ def
-    { _toolTip_trigger = Just "axis"
-    -- TODO
-    -- , _toolTip_pos = 
-    }
-  , _chartOptions_toolbox = Just $ def
-    { _toolBox_features =
-      [ emptyDataZoom { _feature_yAxisIndex = Just $ Aeson.String "none" }
-      , emptyRestore
-      , emptySaveAsImage
-      ]
-    }
-  , _chartOptions_dataZoom =
-    [ def
-      { _dataZoom_show = Just True
-      , _dataZoom_handleSize = Just (SN_String "80%")
-      , _dataZoom_handleIcon = Just "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z"
-      , _dataZoom_handleStyle = Just $ def
-        { _itemStyle_color = Just "#fff"
-        , _itemStyle_shadow = Just $ def
-          { _shadow_blur = Just 3
-          , _shadow_color = Just "rgba(0, 0, 0, 0.6)"
-          , _shadow_offsetX = Just 2
-          , _shadow_offsetY = Just 2
-          }
-        }
-      , _dataZoom_start = Just $ Aeson.Number 0
-      , _dataZoom_end = Just $ Aeson.Number 10
-      }
-    , def
-      { _dataZoom_type = Just "inside"
-      , _dataZoom_start = Just $ Aeson.Number 0
-      , _dataZoom_end = Just $ Aeson.Number 10
-      }
-    ]
-  , _chartOptions_xAxis = def { _axis_type = Just AxisType_Category
-                              , _axis_data = Just $ zip xAxisData $ repeat Nothing
-                              , _axis_boundaryGap = Just $ Left False} :[]
-  , _chartOptions_yAxis =
-    [ def { _axis_type = Just AxisType_Value
-          , _axis_boundaryGap = Just $ Right (SizeValue_Numeric 0, SizeValue_Percent 100)
-          }
-    ]
-  , _chartOptions_series =
-    [ Some.This $ SeriesT_Line $ def
-        & series_data ?~ (map DataDouble randomData)
-        & series_name ?~ xSeriesName
-        & series_smooth ?~ Left True
-        & series_itemStyle ?~ def { _itemStyle_color = Just "rgb(255, 70, 131)" }
-        -- TODO uses new
-        & series_areaStyle ?~ def
-    ]
-  }
+largeScaleAreaChart
+  :: ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , TriggerEvent t m
+     , MonadFix m
+     , MonadIO (Performable m)
+     , MonadJSM m
+     , MonadJSM (Performable m)
+     )
+  => m (Chart)
+largeScaleAreaChart =
+  lineChart $ LineChartConfig (600, 400) (constDyn opts) $
+    (0 =: (s1, constDyn d1, constDyn xAxisData))
   where
+    opts = def
+      { _chartOptions_title = Just $ def
+        {
+          _title_text = Just "Large Scale Area Chart"
+        , _title_pos = Just $ def {
+            _pos_left = Just $ PosAlign_Align Align_Center
+            }
+        }
+      , _chartOptions_tooltip = Just $ def
+        { _toolTip_trigger = Just "axis"
+        -- TODO
+        -- , _toolTip_pos = 
+        }
+      , _chartOptions_toolbox = Just $ def
+        { _toolBox_features =
+          [ emptyDataZoom { _feature_yAxisIndex = Just $ Aeson.String "none" }
+          , emptyRestore
+          , emptySaveAsImage
+          ]
+        }
+      , _chartOptions_dataZoom =
+        [ def
+          { _dataZoom_show = Just True
+          , _dataZoom_handleSize = Just (SN_String "80%")
+          , _dataZoom_handleIcon = Just "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z"
+          , _dataZoom_handleStyle = Just $ def
+            { _itemStyle_color = Just "#fff"
+            , _itemStyle_shadow = Just $ def
+              { _shadow_blur = Just 3
+              , _shadow_color = Just "rgba(0, 0, 0, 0.6)"
+              , _shadow_offsetX = Just 2
+              , _shadow_offsetY = Just 2
+              }
+            }
+          , _dataZoom_start = Just $ Aeson.Number 0
+          , _dataZoom_end = Just $ Aeson.Number 10
+          }
+        , def
+          { _dataZoom_type = Just "inside"
+          , _dataZoom_start = Just $ Aeson.Number 0
+          , _dataZoom_end = Just $ Aeson.Number 10
+          }
+        ]
+      , _chartOptions_xAxis = def { _axis_type = Just AxisType_Category
+                                  , _axis_boundaryGap = Just $ Left False} :[]
+      , _chartOptions_yAxis =
+        [ def { _axis_type = Just AxisType_Value
+              , _axis_boundaryGap = Just $ Right (SizeValue_Numeric 0, SizeValue_Percent 100)
+              }
+        ]
+      }
     xSeriesName = "Random Data"
     xAxisData = take dataSize $ map (\d -> tshow $ addDays d startDate) [0..]
     startDate = fromGregorian 1968 9 3
     dataSize = 20000
     rs :: [Double]
-    rs = randomRs (-10, 10) rGen
-    randomData = take dataSize $ scanl (\d r -> r + d) 50 rs
+    rs = randomRs (-10, 10) (mkStdGen 0)
+    s1 = def
+      & series_name ?~ xSeriesName
+      & series_smooth ?~ Left True
+      & series_itemStyle ?~ def { _itemStyle_color = Just "rgb(255, 70, 131)" }
+      -- TODO uses new
+      & series_areaStyle ?~ def
+    d1 = Map.fromList $ zip xAxisData $ map DataDouble $
+      take dataSize $ scanl (\d r -> r + d) 50 rs
 
 confidenceBandJsonData :: Text
 confidenceBandJsonData = do
@@ -562,86 +644,104 @@ instance FromJSON ConfidenceData where
     { fieldLabelModifier = drop $ T.length "_confidenceData_"
     }
 
-confidenceBand :: [ConfidenceData] -> ChartOptions
-confidenceBand confData = def
-  { _chartOptions_title = Just $ def
-    {
-      _title_text = Just "Confidence Band"
-    , _title_pos = Just $ def {
-        _pos_left = Just $ PosAlign_Align Align_Center
-        }
-    }
-  , _chartOptions_tooltip = Just $ def
-    { _toolTip_trigger = Just "axis"
-    , _toolTip_axisPointer = Just $ def
-      { _axisPointer_type = Just $ "cross"
-      -- , _axisPointer_animation = Just False
-      , _axisPointer_label = Just $ def
-        { _label_backgroundColor = Just "#ccc"
-        , _label_border = Just $ def
-          { _border_color = Just "#aaa"
-          , _border_width = Just 1
-          }
-        , _label_shadow = Just $ def
-          { _shadow_blur = Just 0
-          , _shadow_offsetX = Just 0
-          , _shadow_offsetY = Just 0
-          }
-        , _label_textStyle = Just $ def
-          { _textStyle_color = Just "#222"
-          }
-        }
-      }
-    -- TODO function
-    -- , _toolTip_formatter =
-    }
-  , _chartOptions_grid = def
-    { _grid_pos = Just $ def
-      { _pos_left = Just $ PosAlign_Percent 3
-      , _pos_right = Just $ PosAlign_Percent 4
-      , _pos_bottom = Just $ PosAlign_Percent 3
-      }
-    , _grid_containLabel = Just True
-    } : []
-  , _chartOptions_xAxis = def
-    { _axis_type = Just AxisType_Category
-    , _axis_data = Just $ zip xAxisData $ repeat Nothing
-    -- TODO function
-    -- , _axis_label = Just $ def
-    --   { _axisLabel_formatter =
-    --   }
-    , _axis_splitLine = Just $ def { _splitLine_show = Just False }
-    , _axis_boundaryGap = Just $ Left False
-    } :[]
-  , _chartOptions_yAxis =
-    [ def { _axis_type = Just AxisType_Value
-          , _axis_splitLine = Just $ def { _splitLine_show = Just False }
-          , _axis_splitNumber = Just $ 3
-          }
-    ]
-  , _chartOptions_series =
-    [ Some.This $ SeriesT_Line $ def
-        & series_data ?~ (map (DataDouble . ((+) base) . _confidenceData_l) confData)
-        & series_name ?~ "L"
-        & series_stack ?~ "confidence-band"
-        & series_symbol ?~ "none"
-        & series_lineStyle ?~ def { _lineStyle_opacity = Just 0 }
-    , Some.This $ SeriesT_Line $ def
-        & series_data ?~ (map (DataDouble . (\v -> _confidenceData_u v - _confidenceData_l v)) confData)
-        & series_name ?~ "U"
-        & series_stack ?~ "confidence-band"
-        & series_symbol ?~ "none"
-        & series_lineStyle ?~ def { _lineStyle_opacity = Just 0 }
-        & series_areaStyle ?~ def { _areaStyle_color = Just "#ccc" }
-    , Some.This $ SeriesT_Line $ def
-        & series_data ?~ (map (DataDouble . ((+) base) . _confidenceData_value) confData)
-        & series_symbolSize ?~ Aeson.Number 6
-        & series_showSymbol ?~ False
-        & series_hoverAnimation ?~ False
-        & series_itemStyle ?~ def { _itemStyle_color = Just "#c23531" }
-    ]
-  }
+confidenceBand
+  :: ( PostBuild t m
+     , DomBuilder t m
+     , PerformEvent t m
+     , MonadHold t m
+     , GhcjsDomSpace ~ DomBuilderSpace m
+     , TriggerEvent t m
+     , MonadFix m
+     , MonadIO (Performable m)
+     , MonadJSM m
+     , MonadJSM (Performable m)
+     )
+  => [ConfidenceData]
+  -> m (Chart)
+confidenceBand confData =
+  lineChart $ LineChartConfig (600, 400) (constDyn opts) $
+    (1 =: (s1, constDyn d1, constDyn xAxisData))
+    <> (2 =: (s2, constDyn d2, constDyn xAxisData))
+    <> (3 =: (s3, constDyn d3, constDyn xAxisData))
   where
+    opts = def
+      { _chartOptions_title = Just $ def
+        {
+          _title_text = Just "Confidence Band"
+        , _title_pos = Just $ def {
+            _pos_left = Just $ PosAlign_Align Align_Center
+            }
+        }
+      , _chartOptions_tooltip = Just $ def
+        { _toolTip_trigger = Just "axis"
+        , _toolTip_axisPointer = Just $ def
+          { _axisPointer_type = Just $ "cross"
+          -- , _axisPointer_animation = Just False
+          , _axisPointer_label = Just $ def
+            { _label_backgroundColor = Just "#ccc"
+            , _label_border = Just $ def
+              { _border_color = Just "#aaa"
+              , _border_width = Just 1
+              }
+            , _label_shadow = Just $ def
+              { _shadow_blur = Just 0
+              , _shadow_offsetX = Just 0
+              , _shadow_offsetY = Just 0
+              }
+            , _label_textStyle = Just $ def
+              { _textStyle_color = Just "#222"
+              }
+            }
+          }
+        -- TODO function
+        -- , _toolTip_formatter =
+        }
+      , _chartOptions_grid = def
+        { _grid_pos = Just $ def
+          { _pos_left = Just $ PosAlign_Percent 3
+          , _pos_right = Just $ PosAlign_Percent 4
+          , _pos_bottom = Just $ PosAlign_Percent 3
+          }
+        , _grid_containLabel = Just True
+        } : []
+      , _chartOptions_xAxis = def
+        { _axis_type = Just AxisType_Category
+        -- TODO function
+        -- , _axis_label = Just $ def
+        --   { _axisLabel_formatter =
+        --   }
+        , _axis_splitLine = Just $ def { _splitLine_show = Just False }
+        , _axis_boundaryGap = Just $ Left False
+        } :[]
+      , _chartOptions_yAxis =
+        [ def { _axis_type = Just AxisType_Value
+              , _axis_splitLine = Just $ def { _splitLine_show = Just False }
+              , _axis_splitNumber = Just $ 3
+              }
+        ]
+      }
+    d1 =  Map.fromList $ zip xAxisData $
+      map (DataDouble . ((+) base) . _confidenceData_l) confData
+    s1 = def
+      & series_name ?~ "L"
+      & series_stack ?~ "confidence-band"
+      & series_symbol ?~ "none"
+      & series_lineStyle ?~ def { _lineStyle_opacity = Just 0 }
+    d2 = Map.fromList $ zip xAxisData $
+      map (DataDouble . (\v -> _confidenceData_u v - _confidenceData_l v)) confData
+    s2 = def
+      & series_name ?~ "U"
+      & series_stack ?~ "confidence-band"
+      & series_symbol ?~ "none"
+      & series_lineStyle ?~ def { _lineStyle_opacity = Just 0 }
+      & series_areaStyle ?~ def { _areaStyle_color = Just "#ccc" }
+    d3 = Map.fromList $ zip xAxisData $
+      map (DataDouble . ((+) base) . _confidenceData_value) confData
+    s3 = def
+      & series_symbolSize ?~ Aeson.Number 6
+      & series_showSymbol ?~ False
+      & series_hoverAnimation ?~ False
+      & series_itemStyle ?~ def { _itemStyle_color = Just "#c23531" }
     base = negate $ minimum $ map _confidenceData_l confData
     xSeriesName = "Confidence Band"
     xAxisData = map _confidenceData_date confData
@@ -833,56 +933,3 @@ aqiChart aqiData = def
         , (200, "#660099")
         , (300, "#7e0023")
         ]
-
-multipleXAxes :: ChartOptions
-multipleXAxes = def
-  & chartOptions_legend ?~ (def
-    & legend_data ?~ [ (xSeriesName1, def)
-                     , (xSeriesName2, def)
-                     ])
-  & chartOptions_tooltip ?~ (def
-    & toolTip_trigger ?~ "none"
-    & toolTip_axisPointer ?~ (def
-      & axisPointer_type ?~ "Cross"))
-  & chartOptions_grid .~ (def
-    & grid_pos ?~ (def
-      & pos_top ?~ PosAlign_Pixel 70
-      & pos_bottom ?~ PosAlign_Pixel 50)) : []
-  & chartOptions_yAxis .~ (def
-    & axis_type ?~ AxisType_Value) : []
-  & chartOptions_xAxis .~ (def
-    & axis_type ?~ AxisType_Category
-    & axis_axisTick ?~ (def & axisTick_alignWithLabel ?~ True)
-    & axis_axisLine ?~ (def
-      & axisLine_onZero ?~ False
-      & axisLine_lineStyle ?~ (def & lineStyle_color ?~ colors !! 1))
-    -- TODO formatter
-    -- & axis_axisPointer ?~ (def
-    --   & axisPointer_label ?~ def)
-    & axis_data ?~ zip (months xSeriesName2) (repeat Nothing))
-  : (def
-    & axis_type ?~ AxisType_Category
-    & axis_axisTick ?~ (def & axisTick_alignWithLabel ?~ True)
-    & axis_axisLine ?~ (def
-      & axisLine_onZero ?~ False
-      & axisLine_lineStyle ?~ (def & lineStyle_color ?~ colors !! 0))
-    -- TODO formatter
-    -- & axis_axisPointer ?~ (def
-    --   & axisPointer_label ?~ def)
-    & axis_data ?~ zip (months xSeriesName1) (repeat Nothing)) : []
-  & chartOptions_series .~ (Some.This $ SeriesT_Line $ def
-    & series_smooth ?~ Left True
-    & series_name ?~ xSeriesName1
-    & series_xAxisIndex ?~ 1
-    & series_data ?~ map DataDouble x1)
-  : (Some.This $ SeriesT_Line $ def
-    & series_smooth ?~ Left True
-    & series_name ?~ xSeriesName2
-    & series_data ?~ map DataDouble x2) : []
-  where
-    xSeriesName1 = "2015"
-    xSeriesName2 = "2016"
-    colors = ["#5793f3", "#d14a61", "#675bba"]
-    months y = map (\m -> y <> "-" <> tshow m) [1..12]
-    x1 = [2.6, 5.9, 9.0, 26.4, 28.7, 70.7, 175.6, 182.2, 48.7, 18.8, 6.0, 2.3]
-    x2 = [3.9, 5.9, 11.1, 18.7, 48.3, 69.2, 231.6, 46.6, 55.4, 18.4, 10.3, 0.7]

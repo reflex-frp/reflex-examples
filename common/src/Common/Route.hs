@@ -48,6 +48,7 @@ data Example :: * -> * where
   Example_ScreenKeyboard :: Example ()
   Example_NasaPod :: Example ()
   Example_PegSolitaire :: Example ()
+  Example_PreventDefault :: Example ()
   Example_TicTacToe :: Example ()
   Example_DisplayGameUpdates :: Example ()
   Example_WebSocketEcho :: Example ()
@@ -72,6 +73,7 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
         Example_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
         Example_NasaPod -> PathSegment "nasapod" $ unitEncoder mempty
         Example_PegSolitaire -> PathSegment "pegsolitaire" $ unitEncoder mempty
+        Example_PreventDefault -> PathSegment "preventdefault" $ unitEncoder mempty
         Example_TicTacToe -> PathSegment "tictactoe" $ unitEncoder mempty
         Example_DisplayGameUpdates -> PathSegment "displaygameupdates" $ unitEncoder mempty
         Example_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
@@ -93,6 +95,7 @@ exampleTitle (Some.This sec) = case sec of
   Example_ScreenKeyboard -> "Onscreen Keyboard"
   Example_NasaPod -> "Nasa: Picture of the Day"
   Example_PegSolitaire -> "Peg Solitaire"
+  Example_PreventDefault -> "Event.preventDefault()"
   Example_TicTacToe -> "Tic Tac Toe"
   Example_DisplayGameUpdates -> "Display Game Updates"
   Example_WebSocketEcho -> "WebSocket Echo"
@@ -116,6 +119,7 @@ sectionHomepage (Some.This sec) = sec :/ case sec of
   Example_ScreenKeyboard -> ()
   Example_NasaPod -> ()
   Example_PegSolitaire -> ()
+  Example_PreventDefault -> ()
   Example_TicTacToe -> ()
   Example_DisplayGameUpdates -> ()
   Example_WebSocketEcho -> ()
@@ -135,6 +139,8 @@ exampleDescription (Some.This sec) = case sec of
     "Demonstrates XHR requests, by fetching Nasa' Astronomy Picture of the Day"
   Example_PegSolitaire ->
     "A simple client side game"
+  Example_PreventDefault ->
+    "An example on how to preventDefault() an element's event"
   Example_TicTacToe ->
     "A simple client side game"
   Example_DisplayGameUpdates ->
@@ -177,6 +183,7 @@ exampleSourceCode (sec :=> _) = base <> path <> file
       Example_ScreenKeyboard -> "ScreenKeyboard"
       Example_NasaPod -> "NasaPod"
       Example_PegSolitaire -> "PegSolitaire"
+      Example_PreventDefault -> "PreventDefault"
       Example_TicTacToe -> "TicTacToe"
       Example_DisplayGameUpdates -> "DisplayGameUpdates"
       Example_WebSocketEcho -> "WebSocketEcho"

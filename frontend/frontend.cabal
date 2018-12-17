@@ -35,6 +35,7 @@ library
     Frontend.Examples.FileReader.Main
     Frontend.Examples.NasaPod.Main
     Frontend.Examples.PegSolitaire.Main
+    Frontend.Examples.PreventDefault.Main
     Frontend.Examples.ScreenKeyboard.Main
     Frontend.Examples.TicTacToe.Main
     Frontend.Examples.WebSocketChat.Main

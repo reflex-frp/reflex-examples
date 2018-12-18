@@ -31,7 +31,7 @@ app = do
             $ leftmost [b, keypress Enter t]
 
   receivedMessages <- prerender (return (constDyn [])) $ do
-    ws <- webSocket "ws://echo.websocket.org" $ def
+    ws <- webSocket "wss://echo.websocket.org" $ def
       & webSocketConfig_send .~ newMessage
     foldDyn (\m ms -> ms ++ [m]) [] $ _webSocket_recv ws
 

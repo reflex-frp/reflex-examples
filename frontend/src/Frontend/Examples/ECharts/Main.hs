@@ -5,20 +5,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TypeFamilies #-}
 module Frontend.Examples.ECharts.Main where
 
 import Reflex.Dom.Widget.ECharts
 
 import Frontend.Examples.ECharts.ExamplesData (rainfallData, waterFlowData)
-import Common.Examples.ECharts.Types
 
 import qualified Obelisk.ExecutableConfig
 
 import Data.ByteString.Lazy (toStrict, fromStrict)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.Fix (MonadFix)
-import Control.Monad (void)
+import Control.Monad (void, replicateM)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
@@ -58,13 +58,9 @@ app
   => Maybe Text
   -> m ()
 app r = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
-  do
-    ev <- button "Show Dynamic Timeline series"
-    widgetHold blank $ ffor ev $ \_ -> do
-      ws <- cpuStatWebSocket r
-      void $ wrap $ cpuStatTimeLineChart ws
   mapM_ wrap
     [ basicLineChart
+    , cpuStatTimeLineChart
     , stackedAreaChart
     , rainfall
     , multipleXAxes
@@ -235,6 +231,20 @@ multipleXAxes =
         --   & axisPointer_label ?~ def)
         & axis_data ?~ zip x1 (repeat Nothing)) : []
 
+data CpuStat a = CpuStat
+  { _cpuStat_user :: a
+  , _cpuStat_nice :: a
+  , _cpuStat_system :: a
+  , _cpuStat_idle :: a
+  , _cpuStat_iowait :: a
+  , _cpuStat_irq :: a
+  , _cpuStat_softirq :: a
+  , _cpuStat_steal :: a
+  , _cpuStat_guest :: a
+  , _cpuStat_guestNice :: a
+  }
+  deriving (Show, Read, Eq, Ord, Bounded, Generic)
+
 cpuStatTimeLineChart
   :: ( PostBuild t m
      , DomBuilder t m
@@ -246,13 +256,12 @@ cpuStatTimeLineChart
      , MonadIO (Performable m)
      , MonadJSM m
      , MonadJSM (Performable m)
+     , TriggerEvent t m
      )
-  => Event t (UTCTime, CpuStat Double)
-  -> m (Chart)
-cpuStatTimeLineChart ev = do
-  timeLineChart $ TimeLineChartConfig (600, 400) (constDyn opts)
-    chartData
-  where
+  => m (Chart)
+cpuStatTimeLineChart = do
+  ev <- cpuStatGenData
+  let
     chartData = Map.fromList $ map (\(t, f) -> (t, (s t, len, g f))) sNames
     g f = ffor ev $ \(t, c) -> [(t, f c)]
     s n = def
@@ -262,7 +271,7 @@ cpuStatTimeLineChart ev = do
     opts :: ChartOptions
     opts = def
       & chartOptions_title ?~ (def
-        & title_text ?~ "CPU Stats")
+        & title_text ?~ "Time Line Chart")
       & chartOptions_yAxis .~ (def
         & axis_type ?~ AxisType_Value
         & axis_min ?~ Left 0
@@ -282,47 +291,51 @@ cpuStatTimeLineChart ev = do
       , ("guest", _cpuStat_guest)
       , ("guestNice", _cpuStat_guestNice)
       ]
+  timeLineChart $ TimeLineChartConfig (600, 400) (constDyn opts)
+    chartData
 
-cpuStatWebSocket
+cpuStatGenData
   :: forall t m js .
      ( PostBuild t m
      , DomBuilder t m
      , PerformEvent t m
      , MonadSample t m
      , MonadHold t m
+     , MonadFix m
+     , MonadIO (Performable m)
      , GhcjsDomSpace ~ DomBuilderSpace m
-     , Prerender js m
      , TriggerEvent t m
      )
-  => Maybe Text
-  -> m (Event t (UTCTime, CpuStat Double))
-cpuStatWebSocket r = do
-  wsRespEv <- prerender (return never) $ do
-    case checkEncoder backendRouteEncoder of
-      Left err -> do
-        el "div" $ text err
-        return never
-      Right encoder -> do
-        let wsPath = fst $ encode encoder $ InL BackendRoute_EChartsCpuStats :/ ()
-        let mUri = do
-              uri' <- mkURI =<< r
-              pathPiece <- nonEmpty =<< mapM mkPathPiece wsPath
-              wsScheme <- case uriScheme uri' of
-                rtextScheme | rtextScheme == mkScheme "https" -> mkScheme "wss"
-                rtextScheme | rtextScheme == mkScheme "http" -> mkScheme "ws"
-                _ -> Nothing
-              return $ uri'
-                { uriPath = Just (False, pathPiece)
-                , uriScheme = Just wsScheme
-                }
-        case mUri of
-          Nothing -> return never
-          Just uri -> do
-            ws <- webSocket (render uri) $ def
-              & webSocketConfig_send .~ (never :: Event t [Text])
-            return (_webSocket_recv ws)
-  return $ fmapMaybe (Aeson.decode . LBS.fromStrict) wsRespEv
+  => m (Event t (UTCTime, CpuStat Double))
+cpuStatGenData = do
+  tick <- tickWithSpeedSelector
 
+  let
+    initStats = CpuStat 0 0 0 0 0 0 0 0 0 0
+
+  rec
+    cpuStat <- holdDyn initStats (snd <$> ev)
+
+    ev <- performEvent $ ffor (tag (current cpuStat) tick) $ \c -> do
+      t <- liftIO $ getCurrentTime
+      rVals <- liftIO $ replicateM 10 $
+        getStdRandom (randomR (-10, 10))
+      let
+        f i v = min 100 (max 0 (v + (rVals !! i)))
+        s = CpuStat
+          { _cpuStat_user = f 0 $ _cpuStat_user c
+          , _cpuStat_nice = f 1 $ _cpuStat_nice c
+          , _cpuStat_system = f 2 $ _cpuStat_system c
+          , _cpuStat_idle = f 3 $ _cpuStat_idle c
+          , _cpuStat_iowait = f 4 $ _cpuStat_iowait c
+          , _cpuStat_irq = f 5 $  _cpuStat_irq c
+          , _cpuStat_softirq = f 6 $ _cpuStat_softirq c
+          , _cpuStat_steal = f 7 $ _cpuStat_steal c
+          , _cpuStat_guest = f 8 $ _cpuStat_guest c
+          , _cpuStat_guestNice = f 9 $ _cpuStat_guestNice c
+          }
+      return (t, s)
+  return ev
 
 stackedAreaChart
   :: ( PostBuild t m

@@ -23,7 +23,6 @@ library
   exposed-modules:
     Backend
     Backend.Examples.WebSocketChat.Server
-    Backend.Examples.ECharts.Server
   ghc-options: -Wall
 
 executable backend

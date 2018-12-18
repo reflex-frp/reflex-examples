@@ -17,4 +17,3 @@ library
     Common.Api
     Common.Route
     Common.Examples.WebSocketChat.Message
-    Common.Examples.ECharts.Types

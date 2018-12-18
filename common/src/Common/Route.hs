@@ -121,6 +121,7 @@ sectionHomepage (Some.This sec) = sec :/ case sec of
   Example_PegSolitaire -> ()
   Example_TicTacToe -> ()
   Example_DisplayGameUpdates -> ()
+  Example_ECharts -> ()
   Example_WebSocketEcho -> ()
   Example_WebSocketChat -> ()
 

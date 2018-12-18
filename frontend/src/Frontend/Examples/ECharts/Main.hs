@@ -13,13 +13,9 @@ import Reflex.Dom.Widget.ECharts
 
 import Frontend.Examples.ECharts.ExamplesData (rainfallData, waterFlowData)
 
-import qualified Obelisk.ExecutableConfig
-
-import Data.ByteString.Lazy (toStrict, fromStrict)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.Fix (MonadFix)
 import Control.Monad (void, replicateM)
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -29,21 +25,13 @@ import qualified Data.Some as Some
 import qualified Data.Aeson as Aeson
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Vector as V
-import Data.Time.Calendar
 import System.Random
 import GHC.Generics (Generic)
 import Data.Aeson (FromJSON, parseJSON, genericParseJSON, defaultOptions, fieldLabelModifier)
-import qualified Data.ByteString.Lazy as LBS
 import Obelisk.Generated.Static
 import Language.Javascript.JSaddle (JSException(..), catch, JSVal, toJSVal, JSM, MonadJSM, liftJSM, valToText)
-import Data.ByteString (ByteString)
 
-import Data.List.NonEmpty (nonEmpty)
-import Text.URI
 import Reflex.Dom.Core
-import Obelisk.Route
-import Common.Route
-import Data.Functor.Sum
 
 app
   :: forall t m js .
@@ -57,7 +45,7 @@ app
      )
   => Maybe Text
   -> m ()
-app r = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
+app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
   mapM_ wrap
     [ basicLineChart
     , cpuStatTimeLineChart
@@ -92,10 +80,12 @@ tickWithSpeedSelector
      , MonadIO (Performable m)
      )
   => m (Event t TickInfo)
-tickWithSpeedSelector = do
+tickWithSpeedSelector = el "div" $ do
+  el "label" $ text "Tick Interval"
   r <- rangeInput $ def
     & rangeInputConfig_initialValue .~ 1
     & rangeInputConfig_attributes .~ constDyn (("min" =: "0.1") <> ("max" =: "2") <> ("step" =: "0.1"))
+  dynText $ (\v -> tshow v <> "s") <$> (value r)
   dyn ((\v -> tickLossyFromPostBuildTime (fromRational $ toRational v)) <$> (value r))
     >>= switchHold never
 
@@ -117,15 +107,16 @@ basicLineChart = do
   let
     f _ m = Map.fromList $ zip xAxisData $ ls ++ [l]
       where (l:ls) = map (\x -> Map.findWithDefault (DataInt 0) x m) xAxisData
+  text "Enable Dynamic"
   dd <- do
     cb <- el "div" $ do
-      el "label" $ text "Dynamic line 1"
+      el "label" $ text "Line 1"
       checkbox False def
     let ev = gate (current $ value cb) tick
     foldDyn f yAxisData ev
   dd2 <- do
     cb <- el "div" $ do
-      el "label" $ text "Dynamic line 2"
+      el "label" $ text "Line 2"
       checkbox False def
     let ev = gate (current $ value cb) tick
     foldDyn f yAxisData2 ev

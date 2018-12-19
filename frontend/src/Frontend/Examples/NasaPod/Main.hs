@@ -39,10 +39,14 @@ app
      )
   => m ()
 app = el "div" $ do
-  apiKey <- inputElement def
+  apiKey <- inputElement $ def & initialAttributes .~ ("placeholder" =: "Enter NASA API Key")
   submitEvent <- button "Submit"
   let submitApiKey = tagPromptlyDyn (value apiKey) submitEvent
-      loadingWidget = text "Waiting for an API Key..."
+      loadingWidget = el "div" $ do
+        el "p" $ do
+          text "Get your API key from the "
+          elAttr "a" ("href" =: "https://api.nasa.gov/" <> "target" =: "_blank") $ text "NASA Open API"
+          text " site"
   _ <- widgetHold loadingWidget $ fmap apod submitApiKey
   return ()
 

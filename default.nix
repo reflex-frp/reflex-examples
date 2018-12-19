@@ -3,10 +3,10 @@
 , withHoogle ? false # to spin up localhost:8080 hoogle use: nix-shell --arg withHoogle true -A shells.ghc --command "hoogle server -p 8080 --local"
 }:
 with import ./.obelisk/impl { inherit system iosSdkVersion; };
-project ./. ({ ... }: {
+project ./. ({ hackGet, ... }: {
   inherit withHoogle;
-  android.applicationId = "systems.obsidian.obelisk.examples.minimal";
-  android.displayName = "Obelisk Minimal Example";
-  ios.bundleIdentifier = "systems.obsidian.obelisk.examples.minimal";
-  ios.bundleName = "Obelisk Minimal Example";
+  packages = {
+    reflex-dom-echarts = hackGet ./deps/reflex-dom-echarts;
+    echarts-jsdom = hackGet ./deps/echarts-jsdom;
+  };
 })

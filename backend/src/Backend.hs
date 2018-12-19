@@ -17,11 +17,11 @@ import qualified Backend.Examples.WebSocketChat.Server as WebSocketChat
 backend :: Backend BackendRoute FrontendRoute
 backend = Backend
   { _backend_run = \serve -> do
-      state <- newMVar WebSocketChat.newServerState
+      webSocketChatState <- newMVar WebSocketChat.newServerState
       serve $ \case
         BackendRoute_Missing :=> Identity () -> return ()
         BackendRoute_WebSocketChat :=> Identity () -> do
-          runWebSocketsSnap (WebSocketChat.application state)
+          runWebSocketsSnap (WebSocketChat.application webSocketChatState)
 
   , _backend_routeEncoder = backendRouteEncoder
   }

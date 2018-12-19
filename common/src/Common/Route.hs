@@ -50,6 +50,7 @@ data Example :: * -> * where
   Example_PegSolitaire :: Example ()
   Example_TicTacToe :: Example ()
   Example_DisplayGameUpdates :: Example ()
+  Example_ECharts :: Example ()
   Example_WebSocketEcho :: Example ()
   Example_WebSocketChat :: Example ()
 deriving instance Show (Example a)
@@ -74,6 +75,7 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
         Example_PegSolitaire -> PathSegment "pegsolitaire" $ unitEncoder mempty
         Example_TicTacToe -> PathSegment "tictactoe" $ unitEncoder mempty
         Example_DisplayGameUpdates -> PathSegment "displaygameupdates" $ unitEncoder mempty
+        Example_ECharts -> PathSegment "echarts" $ unitEncoder mempty
         Example_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
         Example_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
 
@@ -95,6 +97,7 @@ exampleTitle (Some.This sec) = case sec of
   Example_PegSolitaire -> "Peg Solitaire"
   Example_TicTacToe -> "Tic Tac Toe"
   Example_DisplayGameUpdates -> "Display Game Updates"
+  Example_ECharts -> "ECharts Examples"
   Example_WebSocketEcho -> "WebSocket Echo"
   Example_WebSocketChat -> "WebSocket Chat"
 
@@ -118,6 +121,7 @@ sectionHomepage (Some.This sec) = sec :/ case sec of
   Example_PegSolitaire -> ()
   Example_TicTacToe -> ()
   Example_DisplayGameUpdates -> ()
+  Example_ECharts -> ()
   Example_WebSocketEcho -> ()
   Example_WebSocketChat -> ()
 
@@ -139,6 +143,8 @@ exampleDescription (Some.This sec) = case sec of
     "A simple client side game"
   Example_DisplayGameUpdates ->
     "An example to demonstrate nested Dynamic values. A widget to show updates for a game."
+  Example_ECharts ->
+    "Usage of ECharts (external JS library) with GHCJS and Reflex"
   Example_WebSocketEcho ->
     "Demonstrates use of WebSocket by sending and receiving messages from websocket.org' echo API"
   Example_WebSocketChat ->
@@ -179,5 +185,6 @@ exampleSourceCode (sec :=> _) = base <> path <> file
       Example_PegSolitaire -> "PegSolitaire"
       Example_TicTacToe -> "TicTacToe"
       Example_DisplayGameUpdates -> "DisplayGameUpdates"
+      Example_ECharts -> "ECharts"
       Example_WebSocketEcho -> "WebSocketEcho"
       Example_WebSocketChat -> "WebSocketChat"

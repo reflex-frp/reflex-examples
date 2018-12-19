@@ -10,6 +10,7 @@ library
                , dependent-sum
                , obelisk-route
                , mtl
+               , dependent-sum
                , text
 
   exposed-modules:

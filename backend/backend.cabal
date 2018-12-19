@@ -17,6 +17,8 @@ library
                , obelisk-route
                , text
                , websockets
+               , time
+               , containers
                , websockets-snap
   exposed-modules:
     Backend

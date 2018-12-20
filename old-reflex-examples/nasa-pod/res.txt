@@ -1,9 +1,0 @@
-{
-  "date": "2018-01-09", 
-  "explanation": "It is one of the brightest planetary nebulae on the sky -- what should it be named? First discovered in 1878, nebula NGC 7027 can be seen toward the constellation of the Swan (Cygnus) with a standard backyard telescope. Partly because it appears there as only an indistinct spot, it is rarely referred to with a moniker. When imaged with the Earth-orbiting Hubble Space Telescope, however, great details are revealed. Studying Hubble images of NGC 7027 have led to the understanding that it is a planetary nebula that began expanding about 600 years ago, and that the cloud of gas and dust is unusually massive as it appears to contain about three times the mass of our Sun. Pictured here in assigned colors, the resolved, layered, and dust-laced features of NGC 7027 might remind sky enthusiasts of a familiar icon that could be the basis for an informal name. A leading previous suggestion was the Pillow Nebula, but please feel free to make new suggestions -- for example, in an online APOD discussion forum.   Free APOD Lecture Tonight near Washington, DC: Starting at 7 pm at the National Harbor", 
-  "hdurl": "https://apod.nasa.gov/apod/image/1801/NGC7027_HubbleSchmidt_960.jpg", 
-  "media_type": "image", 
-  "service_version": "v1", 
-  "title": "Bright Planetary Nebula NGC 7027 from Hubble", 
-  "url": "https://apod.nasa.gov/apod/image/1801/NGC7027_HubbleSchmidt_960.jpg"
-}

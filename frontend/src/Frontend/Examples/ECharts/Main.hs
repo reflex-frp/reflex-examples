@@ -46,27 +46,30 @@ app
   => Maybe Text
   -> m ()
 app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
-  mapM_ wrapper
+  delayedRender
     [ basicLineChart
     , cpuStatTimeLineChart
     , stackedAreaChart
-    , rainfall
     , multipleXAxes
+    , rainfall
     , largeScaleAreaChart
     ]
 
   dEv <- do
-    pb <- getPostBuild
+    pb <- delay 3 =<< getPostBuild
     d1 <- holdDyn Nothing
       =<< getAndDecode ((static @"data/confidence-band.json") <$ pb)
-    -- d2 <- holdDyn Nothing
-    --   =<< getAndDecode ((static @"data/aqi-beijing.json") <$ pb)
-    -- let d = (,) <$> d1 <*> d2
     return $ fforMaybe (updated d1) id
   void $ widgetHold blank $ ffor dEv $ \c -> do
     void $ wrapper $ confidenceBand c
+
   return ()
   where
+    delayedRender [] = return ()
+    delayedRender (m:ms) = do
+      wrapper m
+      ev <- delay 0.5 =<< getPostBuild
+      void $ widgetHold blank $ ffor ev $ \_ -> delayedRender ms
     wrapper m = elAttr "div" ("style" =: "padding: 50px;") m
 
 tickWithSpeedSelector

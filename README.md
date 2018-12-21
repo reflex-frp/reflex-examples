@@ -1,5 +1,5 @@
 # Reflex Examples
 
-To run the examples, install [Obelisk](https://github.com/obsidiansystems/obelisk), go into the project directory, and run `ob run`.
+See https://examples.reflex-frp.org/
 
-The old examples are in `old-reflex-examples` directory.
+To run the examples locally, install [Obelisk](https://github.com/obsidiansystems/obelisk), go into the project directory, and run `ob run`. This will compile the examples using `ghc` and run them locally on http://localhost:8000/. You can also do modifications to the examples while the `ob run` command is running, it will recompile them automatically when the file is saved, and reload the page where it's running.

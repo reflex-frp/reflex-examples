@@ -15,7 +15,7 @@ import Frontend.Examples.ECharts.ExamplesData (rainfallData, waterFlowData)
 
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Control.Monad.Fix (MonadFix)
-import Control.Monad (void, replicateM)
+import Control.Monad
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -58,7 +58,7 @@ app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wr
   dEv <- do
     pb <- delay 3 =<< getPostBuild
     d1 <- holdDyn Nothing
-      =<< getAndDecode ((static @"data/confidence-band.json") <$ pb)
+      =<< getAndDecode' ((static @"data/confidence-band.json") <$ pb)
     return $ fforMaybe (updated d1) id
   void $ widgetHold blank $ ffor dEv $ \c -> do
     void $ wrapper $ confidenceBand c
@@ -71,6 +71,12 @@ app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wr
       ev <- delay 0.5 =<< getPostBuild
       void $ widgetHold blank $ ffor ev $ \_ -> delayedRender ms
     wrapper m = elAttr "div" ("style" =: "padding: 50px;") m
+
+-- TODO upstream to reflex-dom-core
+getAndDecode' :: (MonadIO m, MonadJSM (Performable m), PerformEvent t m, HasJSContext (Performable m), TriggerEvent t m, FromJSON a) => Event t Text -> m (Event t (Maybe a))
+getAndDecode' url = do
+  r <- performRequestAsync $ fmap (\x -> XhrRequest "GET" x def) url
+  return $ fmap (jsonDecode . textToJSString <=< _xhrResponse_responseText) r
 
 tickWithSpeedSelector
   :: ( PostBuild t m

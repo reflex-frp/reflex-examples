@@ -46,7 +46,7 @@ app
   => Maybe Text
   -> m ()
 app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
-  mapM_ wrapper
+  delayedRender
     [ basicLineChart
     , cpuStatTimeLineChart
     , stackedAreaChart
@@ -58,6 +58,12 @@ app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wr
 
   return ()
   where
+    delayedRender [] = return ()
+    delayedRender (m:ms) = do
+      c <- wrapper m
+      (ev1, _) <- headTailE (_chart_finished c)
+      void $ widgetHold blank $ ffor ev1 $ \_ -> do
+        delayedRender ms
     wrapper m = elAttr "div" ("style" =: "padding: 50px;") m
 
 -- TODO upstream to reflex-dom-core

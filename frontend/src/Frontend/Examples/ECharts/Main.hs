@@ -53,18 +53,9 @@ app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wr
     , rainfall
     , multipleXAxes
     , largeScaleAreaChart
+    , confidenceBand
     ]
 
-  dEv <- do
-    pb <- getPostBuild
-    d1 <- holdDyn Nothing
-      =<< getAndDecode' ((static @"data/confidence-band.json") <$ pb)
-    -- d2 <- holdDyn Nothing
-    --   =<< getAndDecode ((static @"data/aqi-beijing.json") <$ pb)
-    -- let d = (,) <$> d1 <*> d2
-    return $ fforMaybe (updated d1) id
-  void $ widgetHold blank $ ffor dEv $ \c -> do
-    void $ wrapper $ confidenceBand c
   return ()
   where
     wrapper m = elAttr "div" ("style" =: "padding: 50px;") m
@@ -107,7 +98,7 @@ basicLineChart
      , MonadJSM m
      , MonadJSM (Performable m)
      )
-  => m (Chart)
+  => m (Chart t)
 basicLineChart = do
   tick <- tickWithSpeedSelector
   let
@@ -164,11 +155,12 @@ multipleXAxes
      , DomBuilder t m
      , PerformEvent t m
      , MonadHold t m
+     , TriggerEvent t m
      , GhcjsDomSpace ~ DomBuilderSpace m
      , MonadJSM m
      , MonadJSM (Performable m)
      )
-  => m (Chart)
+  => m (Chart t)
 multipleXAxes =
   lineChart $ LineChartConfig (600, 400) (constDyn multipleXAxesOpts)
     (chartDataDyn)
@@ -255,7 +247,7 @@ cpuStatTimeLineChart
      , MonadJSM (Performable m)
      , TriggerEvent t m
      )
-  => m (Chart)
+  => m (Chart t)
 cpuStatTimeLineChart = do
   ev <- cpuStatGenData
   let
@@ -338,11 +330,12 @@ stackedAreaChart
      , DomBuilder t m
      , PerformEvent t m
      , MonadHold t m
+     , TriggerEvent t m
      , GhcjsDomSpace ~ DomBuilderSpace m
      , MonadJSM m
      , MonadJSM (Performable m)
      )
-  => m (Chart)
+  => m (Chart t)
 stackedAreaChart =
   lineChart $ LineChartConfig (600, 400) (constDyn opts) $ Map.fromList
     $ zip ([0..] :: [Int]) $ map (\(l, d) ->
@@ -428,11 +421,12 @@ rainfall
      , DomBuilder t m
      , PerformEvent t m
      , MonadHold t m
+     , TriggerEvent t m
      , GhcjsDomSpace ~ DomBuilderSpace m
      , MonadJSM m
      , MonadJSM (Performable m)
      )
-  => m (Chart)
+  => m (Chart t)
 rainfall =
   lineChart $ LineChartConfig (600, 400) (constDyn opts) $
     ((0 :: Int) =: (s1, constDyn d1, constDyn xAxisData))
@@ -554,11 +548,12 @@ largeScaleAreaChart
      , DomBuilder t m
      , PerformEvent t m
      , MonadHold t m
+     , TriggerEvent t m
      , GhcjsDomSpace ~ DomBuilderSpace m
      , MonadJSM m
      , MonadJSM (Performable m)
      )
-  => m (Chart)
+  => m (Chart t)
 largeScaleAreaChart =
   lineChart $ LineChartConfig (600, 400) (constDyn opts) $
     ((0 :: Int) =: (s1, constDyn d1, constDyn xAxisData))
@@ -651,17 +646,20 @@ confidenceBand
      , DomBuilder t m
      , PerformEvent t m
      , MonadHold t m
+     , TriggerEvent t m
      , GhcjsDomSpace ~ DomBuilderSpace m
      , MonadJSM m
      , MonadJSM (Performable m)
+     , HasJSContext (Performable m)
      )
-  => [ConfidenceData]
-  -> m (Chart)
-confidenceBand confData =
-  lineChart $ LineChartConfig (600, 400) (constDyn opts) $
-    ((1 :: Int) =: (s1, constDyn d1, constDyn xAxisData))
-    <> (2 =: (s2, constDyn d2, constDyn xAxisData))
-    <> (3 =: (s3, constDyn d3, constDyn xAxisData))
+  => m (Chart t)
+confidenceBand = do
+  confData <- do
+    pb <- getPostBuild
+    dEv <- getAndDecode' ((static @"data/confidence-band.json") <$ pb)
+    holdDyn [] (fmapMaybe id dEv)
+
+  lineChart $ LineChartConfig (600, 400) (constDyn opts) $ seriesData confData
   where
     opts = def
       { _chartOptions_title = Just $ def
@@ -719,30 +717,35 @@ confidenceBand confData =
               }
         ]
       }
-    d1 =  Map.fromList $ zip xAxisData $
-      map (DataDouble . ((+) base) . _confidenceData_l) confData
     s1 = def
       & series_name ?~ "L"
       & series_stack ?~ "confidence-band"
       & series_symbol ?~ "none"
       & series_lineStyle ?~ def { _lineStyle_opacity = Just 0 }
-    d2 = Map.fromList $ zip xAxisData $
-      map (DataDouble . (\v -> _confidenceData_u v - _confidenceData_l v)) confData
     s2 = def
       & series_name ?~ "U"
       & series_stack ?~ "confidence-band"
       & series_symbol ?~ "none"
       & series_lineStyle ?~ def { _lineStyle_opacity = Just 0 }
       & series_areaStyle ?~ def { _areaStyle_color = Just "#ccc" }
-    d3 = Map.fromList $ zip xAxisData $
-      map (DataDouble . ((+) base) . _confidenceData_value) confData
     s3 = def
       & series_symbolSize ?~ Aeson.Number 6
       & series_showSymbol ?~ False
       & series_hoverAnimation ?~ False
       & series_itemStyle ?~ def { _itemStyle_color = Just "#c23531" }
-    base = negate $ minimum $ map _confidenceData_l confData
-    xAxisData = map _confidenceData_date confData
+    seriesData confData = ((1 :: Int) =: (s1, d1, xAxisData <$> confData))
+      <> (2 =: (s2, d2, xAxisData <$> confData))
+      <> (3 =: (s3, d3, xAxisData <$> confData))
+      where
+        d1 = (\c -> Map.fromList $ zip (xAxisData c) $
+          map (DataDouble . ((+) (base c)) . _confidenceData_l) c) <$> confData
+        d2 = (\c -> Map.fromList $ zip (xAxisData c) $
+          map (DataDouble . (\v -> _confidenceData_u v - _confidenceData_l v)) c)
+          <$> confData
+        d3 = (\c -> Map.fromList $ zip (xAxisData c) $
+          map (DataDouble . ((+) (base c)) . _confidenceData_value) c) <$> confData
+        base = (\c -> negate $ minimum $ map _confidenceData_l c)
+        xAxisData = (\c -> map _confidenceData_date c)
 
 rainfallAndWaterFlow :: ChartOptions
 rainfallAndWaterFlow = def

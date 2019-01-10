@@ -119,12 +119,16 @@ cell gs p = el "td" $ do
         | otherwise = no
       yes = "src"=: static @"peg-solitaire/images/ball.svg"
         <> "style" =: "display: block"
+        <> "draggable" =: "false"
       no  = "src"=: static @"peg-solitaire/images/square.svg"
         <> "style" =: "display: block"
+        <> "draggable" =: "false"
       idk = "src"=: static @"peg-solitaire/images/ball.svg"
         <> "style" =: "display: block; opacity: 0.35"
+        <> "draggable" =: "false"
       off = "src"=: "static/images/square.svg"
         <> "style" =: "display: block; opacity: 0"
+        <> "draggable" =: "false"
 
 -- | Row j of cells.
 row

@@ -1,7 +1,7 @@
 {
   "owner": "obsidiansystems",
   "repo": "reflex-dom-echarts",
-  "branch": "master",
-  "rev": "cc2024e31b74ecacd7cbeebd1c5e229f1e25d010",
-  "sha256": "1rwi2aasnss6xzl5zryi0r3r36vkrgdi4j1g1vc3rhg355vwfczh"
+  "branch": "dn-add-on-events",
+  "rev": "c4de9d4998cbd6a2875a7355a3e86d2ae0f6f816",
+  "sha256": "0gqk169029jv916p8blyj5ccvpdwb9yn9wkaxcl0k6pwb5d2fgfg"
 }

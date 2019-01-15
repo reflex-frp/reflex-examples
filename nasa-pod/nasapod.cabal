@@ -5,9 +5,11 @@ cabal-version:       >=1.10
 
 executable nasapod
   main-is:             Main.hs
-  ghc-options:         -Wall -O2 -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -O2 -rtsopts
+  if !arch(wasm32)
+    ghc-options: -threaded -with-rtsopts=-N
   -- other-extensions:    
-  build-depends:       base >=4.9 && <4.11
+  build-depends:       base >=4.9 && <4.13
                      -- , common -- we don't need common parts here
                      , text
                      , containers

@@ -25,4 +25,6 @@ executable peg-solitaire
 
   other-extensions: TemplateHaskell
   ghc-prof-options: -fprof-auto
-  ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
+  ghc-options: -Wall -fwarn-tabs -funbox-strict-fields -O2
+  if !arch(wasm32)
+    ghc-options: -threaded

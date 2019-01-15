@@ -19,6 +19,8 @@ Data-files:          static/css/*.css,
 
 Executable othello
   ghc-options:         -Wall -rtsopts -O2
+  if !arch(wasm32)
+    ghc-options: -threaded
   main-is:             Othello.hs
   build-depends:       base,
                        array,

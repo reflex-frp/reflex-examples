@@ -21,13 +21,8 @@ import qualified GHCJS.DOM.GlobalEventHandlers as DOM
 import qualified GHCJS.DOM.MouseEvent      as DOM
 import qualified GHCJS.DOM.Types           as DOM (uncheckedCastTo)
 
-import           Language.Javascript.JSaddle
-import           Reflex.Dom                  hiding (mainWidget)
-import           Reflex.Dom.Core             (mainWidget)
-import           Obelisk.Generated.Static
-
-main :: IO ()
-main = run $ mainWidget app
+import Language.Javascript.JSaddle
+import Reflex.Dom.Core
 
 app
   :: ( DomBuilder t m
@@ -39,18 +34,23 @@ app
      )
   => m ()
 app = do
-  draggable item1 "a picture"
-  draggable item2 "some code"
+  el "h3" $ text "Drag and Drop"
+  el "div" $ draggable item1 "Haskell logo"
+  el "div" $ draggable item2 "some text"
+  text "Drap either the above logo or the text to the below box"
   handleDragEvents
   return ()
 
+
 item1 :: DomBuilder t m => m (Element EventResult (DomBuilderSpace m) t, ())
-item1 = elAttr' "img" ("draggable" =: "true" <> "src" =: static @"obelisk.jpg") blank
+item1 = elAttr' "img" ("draggable" =: "true" <> "src" =: haskellLogoUrl) blank
+  where
+    haskellLogoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Haskell-Logo.svg/180px-Haskell-Logo.svg.png"
 
 item2 :: DomBuilder t m => m (Element EventResult (DomBuilderSpace m) t, ())
 item2 = elAttr' "pre" ("draggable" =: "true"
       <> "style" =: "-moz-user-select:none;-ms-user-select:none;-webkit-user-select:none;user-select:none;")
-      $ text "main = putStrLn \"Hello world!\""
+      $ text "Draggable text"
 
 draggable
   :: ( DomBuilder t m

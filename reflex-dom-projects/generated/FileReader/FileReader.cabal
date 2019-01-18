@@ -1,4 +1,4 @@
-name:                reflex-examples-EXAMPLENAME
+name:                reflex-examples-FileReader
 version:             0.1.0.0
 synopsis:            Examples for reflex and reflex-dom
 -- description:
@@ -13,9 +13,9 @@ build-type:          Simple
 extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
-executable reflex-examples-EXAMPLENAME
+executable reflex-examples-FileReader
   main-is:             Main.hs
-  other-modules:       Frontend.Examples.EXAMPLENAME.Main
+  other-modules:       Frontend.Examples.FileReader.Main
   -- other-extensions:
   build-depends:       base >=4.11 && <4.12
                        , bytestring

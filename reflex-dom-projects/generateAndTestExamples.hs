@@ -2,7 +2,7 @@
 #! nix-shell -i runghc -p "ghc.withPackages (pkgs: [ pkgs.shelly ])"
 
 {-# LANGUAGE OverloadedStrings #-}
--- | This script provides basic tests for the try-reflex functionality; it should be run before committing code to important branches, such as 'develop'
+-- | This script creates cabal projects from the template for individual examples
 
 import Shelly
 import Control.Monad
@@ -13,7 +13,6 @@ examples =
   , "DragAndDrop"
   , "FileReader"
   , "NasaPod"
-  , "PegSolitaire"
   , "ScreenKeyboard"
   , "TicTacToe"
   , "WebSocketEcho"
@@ -42,8 +41,4 @@ main = shelly $ verbosely $ do
     mkdir_p (targetDir </> prefixDir)
     cp_r srcDir (targetDir </> prefixDir)
 
-    -- copy static assets
-    let
-      srcDir = (fromText "../static")
-    cp_r srcDir targetDir
-    -- Test cabal build
+    -- TODO - Test cabal build

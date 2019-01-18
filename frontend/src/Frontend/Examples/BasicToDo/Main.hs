@@ -31,9 +31,10 @@ new v m = case M.maxViewWithKey m of
 ulW :: (DomBuilder t m, PostBuild t m, MonadFix m, MonadHold t m)
   => Dynamic t (MM T.Text) -> m (Dynamic t (MM (Event t Int)))
 ulW xs = elClass "ul" "list" $ listWithKey xs $ \k x -> elClass "li" "element" $ do
-  dynText x -- output the text
-  fmap (const k) <$> elClass "div" "delete" (button "x")
+  e <- fmap (const k) <$> elClass "span" "delete" (button "x")
   -- tag the event of button press with the key of the text
+  elAttr "span" ("style" =: "padding: 0.5em;") $ dynText x -- output the text
+  return e
 
 -- output an input text widget with auto clean on return and return an
 -- event firing on return containing the string before clean
@@ -67,4 +68,6 @@ listW e = do
   return ()
 
 app :: (DomBuilder t m, PostBuild t m, MonadFix m, MonadHold t m) => m ()
-app = el "div" $ inputW >>= listW
+app = el "div" $ do
+  el "h4" $ text "ToDo List"
+  inputW >>= listW

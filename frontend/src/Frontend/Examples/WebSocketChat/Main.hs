@@ -1,8 +1,10 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE RecursiveDo       #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 module Frontend.Examples.WebSocketChat.Main where
 
@@ -38,9 +40,7 @@ app
      , MonadFix m
      , MonadHold t m
      , PostBuild t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => Maybe Text
   -> m ()
@@ -52,7 +52,7 @@ app r = do
       msgRecEv = fmapMaybe decodeOneMsg wsRespEv
       eRecRespTxt = fmap showMsg msgRecEv
       loggedInEv = fmapMaybe loginEv msgRecEv
-    wsRespEv <- prerender (return never) $ do
+    wsRespEv <- fmap switchDyn $ prerender (return never) $ do
       case checkEncoder backendRouteEncoder of
         Left err -> do
           el "div" $ text err
@@ -98,13 +98,10 @@ app r = do
 
 loginWidget
   :: ( DomBuilder t m
-     , MonadFix m
-     , PostBuild t m
-     , PerformEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => m (Event t C2S)
-loginWidget = el "div" $ do
+loginWidget = fmap switchDyn . el "div" $ prerender (pure never) $ do
   rec
     tn <- inputElement $ def
       & inputElementConfig_setValue .~ fmap (const "") eNewName
@@ -120,13 +117,10 @@ loginWidget = el "div" $ do
 
 messagingWidget
   :: ( DomBuilder t m
-     , MonadFix m
-     , PostBuild t m
-     , PerformEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => m (Event t C2S)
-messagingWidget = el "div" $ do
+messagingWidget = fmap switchDyn . el "div" $ prerender (pure never) $ do
   rec
     t <- inputElement $ def & inputElementConfig_setValue .~ fmap (const "") newMessage
     doFocus t
@@ -139,11 +133,12 @@ doFocus
   :: ( DomBuilder t m
      , PostBuild t m
      , PerformEvent t m
-     , Prerender js m
+     , DomBuilderSpace m ~ GhcjsDomSpace
+     , MonadJSM (Performable m)
      )
   => InputElement EventResult (DomBuilderSpace m) t
   -> m ()
-doFocus ie = prerender (return ()) $ do
+doFocus ie = do
   pb <- getPostBuild
   let h = _inputElement_raw ie
   performEvent_ (fmap (liftJSM . const (focus h)) pb)

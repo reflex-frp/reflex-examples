@@ -53,9 +53,7 @@ examples
      , PostBuild t m
      , MonadFix m
      , MonadHold t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => Maybe Text
   -> Dynamic t (R Example)

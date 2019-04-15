@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 module Frontend.Examples.ScreenKeyboard.Main where
 
@@ -37,9 +38,10 @@ performArg f x = performEvent (fmap (liftJSM . f) x)
 
 inputW
   :: ( DomBuilder t m
-     , Prerender js m
      , PerformEvent t m
      , MonadFix m
+     , MonadJSM (Performable m)
+     , DomBuilderSpace m ~ GhcjsDomSpace
      )
   => Event t Char
   -> m ()
@@ -55,15 +57,15 @@ inputW buttonE = do
 
 doStuff
   :: ( DomBuilder t m
-     , Prerender js m
      , PerformEvent t m
+     , MonadJSM (Performable m)
      )
   => Behavior t Text
-  -> RawInputElement (DomBuilderSpace m)
+  -> HTMLInputElement
   -> Event t Char
   -> m (Event t (Int, Text))
 doStuff cur html buttonE = do
-  posCharE :: Event t (Char, Int) <- prerender (return never) $ do
+  posCharE :: Event t (Char, Int) <- do
     ev <- performArg (\c -> (,) c <$> getSelectionStart html) buttonE
     void $ (flip performArg) (fmap snd ev) $ \n -> do
       setSelectionStart html (n + 1)
@@ -79,9 +81,7 @@ keys = forM "qwerty" $ \c -> fmap (const c) <$> button [c] -- OverloadedLists
 
 app
   :: ( DomBuilder t m
-     , MonadFix m
-     , PerformEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => m ()
-app = el "div" $ elClass "div" "keys" keys >>= inputW . fromListE
+app = el "div" $ prerender_ blank $ elClass "div" "keys" keys >>= inputW . fromListE

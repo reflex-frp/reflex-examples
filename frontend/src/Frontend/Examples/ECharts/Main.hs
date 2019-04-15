@@ -34,18 +34,13 @@ import Language.Javascript.JSaddle hiding ((!!))
 import Reflex.Dom.Core
 
 app
-  :: forall t m js .
+  ::
      ( DomBuilder t m
-     , MonadFix m
-     , MonadHold t m
-     , PostBuild t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => Maybe Text
   -> m ()
-app _ = prerender blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
+app _ = prerender_ blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: wrap") $ do
   delayedRender
     [ basicLineChart
     , cpuStatTimeLineChart
@@ -575,7 +570,7 @@ largeScaleAreaChart =
       , _chartOptions_tooltip = Just $ def
         { _toolTip_trigger = Just "axis"
         -- TODO
-        -- , _toolTip_pos = 
+        -- , _toolTip_pos =
         }
       , _chartOptions_toolbox = Just $ def
         { _toolBox_features =

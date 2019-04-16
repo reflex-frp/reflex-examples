@@ -37,7 +37,7 @@ import qualified Frontend.Examples.WebSocketChat.Main as WebSocketChat
 
 frontend :: Frontend (R FrontendRoute)
 frontend = Frontend
-  { _frontend_head = pageHead
+  { _frontend_head = prerender_ pageHead pageHead
   , _frontend_body = do
       r <- liftIO $ Cfg.get "config/common/route"
       el "header" $ nav

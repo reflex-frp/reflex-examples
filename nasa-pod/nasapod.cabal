@@ -9,7 +9,7 @@ executable nasapod
   if !arch(wasm32)
     ghc-options: -threaded -with-rtsopts=-N
   -- other-extensions:    
-  build-depends:       base >=4.9 && <4.13
+  build-depends:       base
                      -- , common -- we don't need common parts here
                      , text
                      , containers

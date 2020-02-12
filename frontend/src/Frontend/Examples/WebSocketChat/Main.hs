@@ -58,7 +58,7 @@ app r = do
           el "div" $ text err
           return never
         Right encoder -> do
-          let wsPath = fst $ encode encoder $ InL BackendRoute_WebSocketChat :/ ()
+          let wsPath = fst $ encode encoder $ FullRoute_Backend BackendRoute_WebSocketChat :/ ()
               sendEv = fmap ((:[]) . toStrict . Aeson.encode) msgSendEv
           let mUri = do
                 uri' <- mkURI =<< r

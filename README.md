@@ -1,5 +1,7 @@
 # Reflex Examples
 
+[![Haskell](https://img.shields.io/badge/language-Haskell-orange.svg)](https://haskell.org) [![BSD3 License](https://img.shields.io/badge/license-BSD3-blue.svg)](https://github.com/reflex-frp/reflex-examples/blob/master/LICENSE)
+
 See [Reflex FRP](https://reflex-frp.org/) in action with tinker-friendly code samples you can run yourself.
 
 These examples are running at https://examples.reflex-frp.org.

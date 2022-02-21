@@ -4,6 +4,7 @@
 {-# LANGUAGE RecursiveDo           #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE RankNTypes            #-}
@@ -31,11 +32,7 @@ main = run $ mainWidget app
 
 app
   :: ( DomBuilder t m
-     , MonadHold t m
-     , PostBuild t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , Prerender js m
+     , Prerender t m
      )
   => m ()
 app = do
@@ -45,7 +42,7 @@ app = do
   return ()
 
 item1 :: DomBuilder t m => m (Element EventResult (DomBuilderSpace m) t, ())
-item1 = elAttr' "img" ("draggable" =: "true" <> "src" =: static @"obelisk.jpg") blank
+item1 = elAttr' "img" ("draggable" =: "true" <> "src" =: $(static "obelisk.jpg")) blank
 
 item2 :: DomBuilder t m => m (Element EventResult (DomBuilderSpace m) t, ())
 item2 = elAttr' "pre" ("draggable" =: "true"
@@ -54,16 +51,16 @@ item2 = elAttr' "pre" ("draggable" =: "true"
 
 draggable
   :: ( DomBuilder t m
-     , TriggerEvent t m
-     , PerformEvent t m
-     , Prerender js m
+     , Prerender t m
      )
   => m (Element EventResult (DomBuilderSpace m) t, ())
   -> String
   -> m ()
 draggable elmnt attachment = do
   dragsite <- fst <$> elmnt
-  prerender (return ()) $ do
+  return ()
+{-
+  prerender_ (return ()) $ do
     dragStartEvent <- wrapDomEvent -- (_el_element dragsite)
               -- (DOM.getToElement $ _element_raw dragsite)
               (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dragsite)
@@ -79,17 +76,14 @@ draggable elmnt attachment = do
     -- cares about the event
     performEvent_ $ return () <$ dragStartEvent
     return ()
+-}
 
 handleDragEvents
   :: ( DomBuilder t m
-     , TriggerEvent t m
-     , PostBuild t m
-     , MonadHold t m
-     , PerformEvent t m
-     , Prerender js m
+     , Prerender t m
      )
   => m ()
-handleDragEvents = prerender (return ()) $ do
+handleDragEvents = prerender_ (return ()) $ do
   let
     ddEvent :: (DOM.DataTransfer -> DOM.EventM e DOM.MouseEvent a) ->
                DOM.EventM e DOM.MouseEvent a

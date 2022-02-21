@@ -23,5 +23,5 @@ backend = Backend
         BackendRoute_WebSocketChat :=> Identity () -> do
           runWebSocketsSnap (WebSocketChat.application webSocketChatState)
 
-  , _backend_routeEncoder = backendRouteEncoder
+  , _backend_routeEncoder = fullRouteEncoder
   }

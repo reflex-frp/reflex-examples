@@ -57,14 +57,13 @@ data Example :: * -> * where
   Example_WebSocketChat :: Example ()
 deriving instance Show (Example a)
 
-backendRouteEncoder
-  :: Encoder (Either Text) Identity (R (Sum BackendRoute (ObeliskRoute FrontendRoute))) PageName
-backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
-  pathComponentEncoder $ \case
-    InL backendRoute -> case backendRoute of
+fullRouteEncoder
+  :: Encoder (Either Text) Identity (R (FullRoute BackendRoute FrontendRoute)) PageName
+fullRouteEncoder = mkFullRouteEncoder (FullRoute_Backend BackendRoute_Missing :/ ())
+    (\case
       BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
-      BackendRoute_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
-    InR obeliskRoute -> obeliskRouteSegment obeliskRoute $ \case
+      BackendRoute_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty)
+    (\case
       -- The encoder given to PathEnd determines how to parse query parameters,
       -- in this example, we have none, so we insist on it.
       FrontendRoute_Home -> PathEnd $ unitEncoder mempty
@@ -79,7 +78,7 @@ backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
         Example_DisplayGameUpdates -> PathSegment "displaygameupdates" $ unitEncoder mempty
         Example_ECharts -> PathSegment "echarts" $ unitEncoder mempty
         Example_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
-        Example_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
+        Example_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty)
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute
@@ -90,7 +89,7 @@ concat <$> mapM deriveRouteComponent
 
 -- | Provide a human-readable name for a given section
 exampleTitle :: Some Example -> Text
-exampleTitle (Some.This sec) = case sec of
+exampleTitle (Some.Some sec) = case sec of
   Example_BasicToDo -> "Basic To Do List"
   Example_DragAndDrop -> "Drag n Drop"
   Example_FileReader -> "File Reader"
@@ -110,11 +109,11 @@ routeTitle = \case
   (FrontendRoute_Home :=> _) -> "Examples"
   (FrontendRoute_Examples :=> Identity ex) -> case ex of
     (Nothing) -> "Examples"
-    (Just (sec :=> _)) -> exampleTitle $ Some.This sec
+    (Just (sec :=> _)) -> exampleTitle $ Some.Some sec
 
 -- | Given a section, provide its default route
 sectionHomepage :: Some Example -> R Example
-sectionHomepage (Some.This sec) = sec :/ case sec of
+sectionHomepage (Some.Some sec) = sec :/ case sec of
   Example_BasicToDo -> ()
   Example_DragAndDrop -> ()
   Example_FileReader -> ()
@@ -129,7 +128,7 @@ sectionHomepage (Some.This sec) = sec :/ case sec of
 
 -- | Provide a human-readable description for a given section
 exampleDescription :: Some Example -> Text
-exampleDescription (Some.This sec) = case sec of
+exampleDescription (Some.Some sec) = case sec of
   Example_BasicToDo -> "A simple To-Do list app with user input handling and state management."
   Example_DragAndDrop ->
     "An example to demonstrate Drag and Drop functionality"
@@ -158,7 +157,7 @@ routeDescription  = \case
   (FrontendRoute_Home :=> _) -> desc
   (FrontendRoute_Examples :=> Identity m) -> case m of
     (Nothing) -> desc
-    (Just (ex :=> _)) -> exampleDescription $ Some.This ex
+    (Just (ex :=> _)) -> exampleDescription $ Some.Some ex
   where
     desc :: Text
     desc = "Welcome to Reflex Examples"

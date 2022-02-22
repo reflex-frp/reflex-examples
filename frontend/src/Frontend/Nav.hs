@@ -8,6 +8,7 @@
 module Frontend.Nav (nav) where
 
 import Common.Route
+import Obelisk.Generated.Static
 import Obelisk.Route
 import Obelisk.Route.Frontend
 import Reflex.Dom

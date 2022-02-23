@@ -58,28 +58,27 @@ data Example :: * -> * where
 deriving instance Show (Example a)
 
 backendRouteEncoder
-  :: Encoder (Either Text) Identity (R (Sum BackendRoute (ObeliskRoute FrontendRoute))) PageName
-backendRouteEncoder = handleEncoder (const (InL BackendRoute_Missing :/ ())) $
-  pathComponentEncoder $ \case
-    InL backendRoute -> case backendRoute of
-      BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
-      BackendRoute_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
-    InR obeliskRoute -> obeliskRouteSegment obeliskRoute $ \case
-      -- The encoder given to PathEnd determines how to parse query parameters,
-      -- in this example, we have none, so we insist on it.
-      FrontendRoute_Home -> PathEnd $ unitEncoder mempty
-      FrontendRoute_Examples -> PathSegment "examples" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
-        Example_BasicToDo -> PathSegment "basictodo" $ unitEncoder mempty
-        Example_DragAndDrop -> PathSegment "draganddrop" $ unitEncoder mempty
-        Example_FileReader -> PathSegment "filereader" $ unitEncoder mempty
-        Example_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
-        Example_NasaPod -> PathSegment "nasapod" $ unitEncoder mempty
-        Example_PegSolitaire -> PathSegment "pegsolitaire" $ unitEncoder mempty
-        Example_TicTacToe -> PathSegment "tictactoe" $ unitEncoder mempty
-        Example_DisplayGameUpdates -> PathSegment "displaygameupdates" $ unitEncoder mempty
-        Example_ECharts -> PathSegment "echarts" $ unitEncoder mempty
-        Example_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
-        Example_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty
+  :: Encoder (Either Text) Identity (R (FullRoute BackendRoute FrontendRoute)) PageName
+backendRouteEncoder = mkFullRouteEncoder (FullRoute_Backend BackendRoute_Missing :/ ())
+  (\case
+    BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
+    BackendRoute_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty)
+  (\case
+    -- The encoder given to PathEnd determines how to parse query parameters,
+    -- in this example, we have none, so we insist on it.
+    FrontendRoute_Home -> PathEnd $ unitEncoder mempty
+    FrontendRoute_Examples -> PathSegment "examples" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
+      Example_BasicToDo -> PathSegment "basictodo" $ unitEncoder mempty
+      Example_DragAndDrop -> PathSegment "draganddrop" $ unitEncoder mempty
+      Example_FileReader -> PathSegment "filereader" $ unitEncoder mempty
+      Example_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
+      Example_NasaPod -> PathSegment "nasapod" $ unitEncoder mempty
+      Example_PegSolitaire -> PathSegment "pegsolitaire" $ unitEncoder mempty
+      Example_TicTacToe -> PathSegment "tictactoe" $ unitEncoder mempty
+      Example_DisplayGameUpdates -> PathSegment "displaygameupdates" $ unitEncoder mempty
+      Example_ECharts -> PathSegment "echarts" $ unitEncoder mempty
+      Example_WebSocketEcho -> PathSegment "websocketecho" $ unitEncoder mempty
+      Example_WebSocketChat -> PathSegment "websocketchat" $ unitEncoder mempty)
 
 concat <$> mapM deriveRouteComponent
   [ ''BackendRoute

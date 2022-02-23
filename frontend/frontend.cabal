@@ -13,7 +13,7 @@ library
                , containers
                , ghcjs-dom
                , jsaddle
-               , obelisk-executable-config
+               , obelisk-executable-config-lookup
                , obelisk-frontend
                , obelisk-route
                , lens
@@ -59,7 +59,7 @@ executable frontend
                , obelisk-frontend
                , obelisk-route
                , reflex-dom
-               , obelisk-executable-config
+               , obelisk-executable-config-lookup
                , obelisk-generated-static
                , frontend
   --TODO: Make these ghc-options optional

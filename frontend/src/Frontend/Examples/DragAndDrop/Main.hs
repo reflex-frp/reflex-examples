@@ -12,8 +12,6 @@
 
 module Frontend.Examples.DragAndDrop.Main where
 
-import Control.Monad.Ref (MonadRef(..))
-import           Data.IORef                (IORef)
 import           Data.Maybe                (fromMaybe)
 import           Data.Monoid               ((<>))
 import qualified GHCJS.DOM.DataTransfer    as DOM
@@ -54,21 +52,10 @@ item2 = elAttr' "pre" ("draggable" =: "true"
 
 draggable
   ::
-      ( DomBuilder t m
-      , DomBuilderSpace m ~ GhcjsDomSpace
-      , DomRenderHook t m
-      , HasDocument m
+      ( DomBuilderSpace m ~ GhcjsDomSpace
       , TriggerEvent t m
-      , MonadHold t m
-      , MonadJSM (Performable m)
       , MonadJSM m
-      , MonadRef (Performable m)
-      , MonadRef m
-      , MonadSample t (Performable m)
       , PerformEvent t m
-      , PostBuild t m
-      , Ref (Performable m) ~ IORef
-      , Ref m ~ IORef
       )
   => m (Element EventResult (DomBuilderSpace m) t, ())
   -> String

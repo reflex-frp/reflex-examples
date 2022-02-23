@@ -11,7 +11,6 @@ module Frontend.Examples.WebSocketChat.Main where
 import qualified Data.Aeson as Aeson
 import           Data.ByteString    as B
 import           Data.ByteString.Lazy (toStrict, fromStrict)
-import           Data.Functor.Sum
 import           Data.List.NonEmpty
 import           Data.Monoid        ((<>))
 import qualified Data.Text          as T
@@ -40,7 +39,7 @@ app
      , MonadFix m
      , MonadHold t m
      , PostBuild t m
-     , Prerender js t m
+     , Prerender t m
      )
   => Maybe Text
   -> m ()
@@ -53,7 +52,7 @@ app r = do
       eRecRespTxt = fmap showMsg msgRecEv
       loggedInEv = fmapMaybe loginEv msgRecEv
     wsRespEv <- fmap switchDyn $ prerender (return never) $ do
-      case checkEncoder backendRouteEncoder of
+      case checkEncoder fullRouteEncoder of
         Left err -> do
           el "div" $ text err
           return never
@@ -98,7 +97,7 @@ app r = do
 
 loginWidget
   :: ( DomBuilder t m
-     , Prerender js t m
+     , Prerender t m
      )
   => m (Event t C2S)
 loginWidget = fmap switchDyn . el "div" $ prerender (pure never) $ do
@@ -117,7 +116,7 @@ loginWidget = fmap switchDyn . el "div" $ prerender (pure never) $ do
 
 messagingWidget
   :: ( DomBuilder t m
-     , Prerender js t m
+     , Prerender t m
      )
   => m (Event t C2S)
 messagingWidget = fmap switchDyn . el "div" $ prerender (pure never) $ do

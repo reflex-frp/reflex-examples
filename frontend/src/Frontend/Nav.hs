@@ -3,6 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 module Frontend.Nav (nav) where
 
@@ -20,7 +21,7 @@ nav
      , Routed t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
      , SetRoute t (R FrontendRoute) m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 nav = do
@@ -28,12 +29,12 @@ nav = do
   el "nav" menu
 
 -- | Displays the logo and returns an event that fires when the logo is clicked
-logo :: (DomBuilder t m, SetRoute t (R FrontendRoute) m, RouteToUrl (R FrontendRoute) m, Prerender js t m)
+logo :: (DomBuilder t m, SetRoute t (R FrontendRoute) m, RouteToUrl (R FrontendRoute) m, Prerender t m)
   => m ()
 logo = do
   let logoAttrs = mconcat
         [ "class" =: "logo"
-        , "src" =: static @"img/logo.svg"
+        , "src" =: $(static "img/logo.svg")
         , "alt" =: "Reflex"
         ]
   routeLink (FrontendRoute_Home :/ ()) $ elAttr "img" logoAttrs blank

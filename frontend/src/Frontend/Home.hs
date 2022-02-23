@@ -15,7 +15,7 @@ home
   :: ( DomBuilder t m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 home = do
@@ -33,7 +33,7 @@ examplesList
   :: ( DomBuilder t m
      , SetRoute t (R FrontendRoute) m
      , RouteToUrl (R FrontendRoute) m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 examplesList = el "ul" $ do

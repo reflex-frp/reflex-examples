@@ -21,7 +21,7 @@ import           Reflex.Dom
 app
   :: ( DomBuilder t m
      , MonadHold t m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 app = do
@@ -45,12 +45,10 @@ fileInputElement = do
   return (_inputElement_files ie)
 
 dataURLFileReader
-  :: forall t m js
-  .  ( DomBuilder t m
-     , Prerender js t m
+  :: ( DomBuilder t m
+     , Prerender t m
      )
-  => Event t DOM.File
-  -> m (Event t Text)
+  => Event t DOM.File -> m (Event t Text)
 dataURLFileReader request = fmap switchDyn $ prerender (return never) $ do
   fileReader <- liftJSM newFileReader
   performEvent_ (fmap (readAsDataURL fileReader . Just) request)

@@ -12,6 +12,7 @@ import qualified Data.Text                   as T
 import           Data.Text (Text)
 import           GHC.Generics                (Generic)
 import           Reflex.Dom
+import Control.Monad.Fix (MonadFix)
 
 data Apod =
   Apod { date           :: T.Text
@@ -29,8 +30,10 @@ instance ToJSON Apod
 
 app
   :: ( DomBuilder t m
+     , MonadFix m
      , MonadHold t m
-     , Prerender js t m
+     , PostBuild t m
+     , Prerender t m
      )
   => m ()
 app = el "div" $ do
@@ -47,7 +50,10 @@ app = el "div" $ do
 
 apod
   :: ( DomBuilder t m
-     , Prerender js t m
+     , MonadFix m
+     , MonadHold t m
+     , PostBuild t m
+     , Prerender t m
      )
   => Text
   -> m ()
@@ -77,3 +83,4 @@ apod apiKey = prerender_ (blank) $ do
     el "p" $
       dynText =<< holdDyn "Waiting for response" explEv
   return ()
+

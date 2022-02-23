@@ -4,6 +4,7 @@
 {-# LANGUAGE RecursiveDo           #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE RankNTypes            #-}
@@ -31,7 +32,7 @@ main = run $ mainWidget app
 
 app
   :: ( DomBuilder t m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 app = do
@@ -42,7 +43,7 @@ app = do
   return ()
 
 item1 :: DomBuilder t m => m (Element EventResult (DomBuilderSpace m) t, ())
-item1 = elAttr' "img" ("draggable" =: "true" <> "src" =: static @"obelisk.jpg") blank
+item1 = elAttr' "img" ("draggable" =: "true" <> "src" =: $(static "obelisk.jpg")) blank
 
 item2 :: DomBuilder t m => m (Element EventResult (DomBuilderSpace m) t, ())
 item2 = elAttr' "pre" ("draggable" =: "true"
@@ -50,11 +51,10 @@ item2 = elAttr' "pre" ("draggable" =: "true"
       $ text "main = putStrLn \"Hello world!\""
 
 draggable
-  :: ( DomBuilder t m
+  :: ( DomBuilderSpace m ~ GhcjsDomSpace
      , TriggerEvent t m
-     , PerformEvent t m
-     , DomBuilderSpace m ~ GhcjsDomSpace
      , MonadJSM m
+     , PerformEvent t m
      )
   => m (Element EventResult (DomBuilderSpace m) t, ())
   -> String
@@ -79,7 +79,7 @@ draggable elmnt attachment = do
 
 handleDragEvents
   :: ( DomBuilder t m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 handleDragEvents = prerender_ (return ()) $ do

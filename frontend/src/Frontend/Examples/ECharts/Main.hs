@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -34,9 +35,12 @@ import Language.Javascript.JSaddle hiding ((!!))
 import Reflex.Dom.Core
 
 app
-  ::
+  :: forall t m .
      ( DomBuilder t m
-     , Prerender js t m
+     , MonadFix m
+     , MonadHold t m
+     , PostBuild t m
+     , Prerender t m
      )
   => Maybe Text
   -> m ()
@@ -62,7 +66,7 @@ app _ = prerender_ blank $ elAttr "div" ("style" =: "display: flex; flex-wrap: w
     wrapper m = elAttr "div" ("style" =: "padding: 50px;") m
 
 -- TODO upstream to reflex-dom-core
-getAndDecode' :: (MonadIO m, MonadJSM (Performable m), PerformEvent t m, HasJSContext (Performable m), TriggerEvent t m, FromJSON a) => Event t Text -> m (Event t (Maybe a))
+getAndDecode' :: (MonadIO m, MonadJSM (Performable m), PerformEvent t m, TriggerEvent t m, FromJSON a) => Event t Text -> m (Event t (Maybe a))
 getAndDecode' url = do
   r <- performRequestAsync $ fmap (\x -> XhrRequest "GET" x def) url
   return $ fmap (jsonDecode . textToJSString <=< _xhrResponse_responseText) r
@@ -651,13 +655,12 @@ confidenceBand
      , GhcjsDomSpace ~ DomBuilderSpace m
      , MonadJSM m
      , MonadJSM (Performable m)
-     , HasJSContext (Performable m)
      )
   => m (Chart t)
 confidenceBand = do
   confData <- do
     pb <- getPostBuild
-    dEv <- getAndDecode' ((static @"data/confidence-band.json") <$ pb)
+    dEv <- getAndDecode' ($(static "data/confidence-band.json") <$ pb)
     holdDyn [] (fmapMaybe id dEv)
 
   lineChart $ LineChartConfig (600, 400) (constDyn opts) $ seriesData confData
@@ -836,12 +839,12 @@ rainfallAndWaterFlow = def
           }
     ]
   , _chartOptions_series =
-    [ Some.This $ SeriesT_Line $ def
+    [ Some.Some $ SeriesT_Line $ def
         & series_data ?~ (map DataDouble waterFlowData)
         & series_name ?~ xSeriesName
         & series_hoverAnimation ?~ False
         & series_symbolSize ?~ Aeson.Number 8
-    , Some.This $ SeriesT_Line $ def
+    , Some.Some $ SeriesT_Line $ def
         & series_data ?~ (map DataDouble rainfallData)
         & series_name ?~ ySeriesName
         & series_xAxisIndex ?~ 1
@@ -915,7 +918,7 @@ aqiChart aqiData = def
       }
     } : []
   , _chartOptions_series =
-    [ Some.This $ SeriesT_Line $ def
+    [ Some.Some $ SeriesT_Line $ def
         & series_data ?~ (map (DataDouble . snd) aqiData)
         & series_name ?~ title
         & series_markLine ?~ def

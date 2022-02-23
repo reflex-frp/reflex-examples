@@ -81,7 +81,7 @@ keys = forM "qwerty" $ \c -> fmap (const c) <$> button [c] -- OverloadedLists
 
 app
   :: ( DomBuilder t m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 app = el "div" $ prerender_ blank $ elClass "div" "keys" keys >>= inputW . fromListE

@@ -18,7 +18,7 @@ app
      , MonadFix m
      , MonadHold t m
      , PostBuild t m
-     , Prerender js t m
+     , Prerender t m
      )
   => m ()
 app = do

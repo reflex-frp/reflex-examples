@@ -574,7 +574,7 @@ largeScaleAreaChart =
       , _chartOptions_tooltip = Just $ def
         { _toolTip_trigger = Just "axis"
         -- TODO
-        -- , _toolTip_pos = 
+        -- , _toolTip_pos =
         }
       , _chartOptions_toolbox = Just $ def
         { _toolBox_features =

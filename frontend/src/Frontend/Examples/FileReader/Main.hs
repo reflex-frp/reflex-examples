@@ -11,10 +11,10 @@ import           Data.Maybe            (listToMaybe)
 import           Data.Monoid           ((<>))
 import           Data.Text             (Text)
 import qualified Data.Text             as T
+import qualified GHCJS.DOM.Types       as DOM
 import           GHCJS.DOM.EventM      (on)
 import           GHCJS.DOM.FileReader  (newFileReader, readAsDataURL, load
                                        , getResult)
-import qualified GHCJS.DOM.Types       as DOM
 import           Language.Javascript.JSaddle
 import           Reflex.Dom
 

@@ -36,8 +36,9 @@ app
      )
   => m ()
 app = do
-  draggable item1 "a picture"
-  draggable item2 "some code"
+  prerender_ blank $ do
+    draggable item1 "a picture"
+    draggable item2 "some code"
   handleDragEvents
   return ()
 
@@ -50,33 +51,27 @@ item2 = elAttr' "pre" ("draggable" =: "true"
       $ text "main = putStrLn \"Hello world!\""
 
 draggable
-  :: ( DomBuilder t m
-     , Prerender t m
-     )
+  :: PrerenderClientConstraint t m
   => m (Element EventResult (DomBuilderSpace m) t, ())
   -> String
   -> m ()
 draggable elmnt attachment = do
   dragsite <- fst <$> elmnt
+  dragStartEvent <- wrapDomEvent -- (_el_element dragsite)
+            -- (DOM.getToElement $ _element_raw dragsite)
+            (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dragsite)
+            (`DOM.on` DOM.dragStart) $ do
+    dt <- fromMaybe (error "no dt?")
+      <$> (DOM.getDataTransfer =<< DOM.event)
+    DOM.setEffectAllowed dt ("all" :: JSString)
+    DOM.setDropEffect dt ("move" :: JSString)
+    DOM.setData dt
+        ("application/x-reflex-description" :: JSString) attachment
+  -- Bit of a hack here; this actually hooks the drag-start
+  -- event to the DOM, since otherwise nothing reflex-side
+  -- cares about the event
+  performEvent_ $ return () <$ dragStartEvent
   return ()
-{-
-  prerender_ (return ()) $ do
-    dragStartEvent <- wrapDomEvent -- (_el_element dragsite)
-              -- (DOM.getToElement $ _element_raw dragsite)
-              (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dragsite)
-              (`DOM.on` DOM.dragStart) $ do
-      dt <- fromMaybe (error "no dt?")
-        <$> (DOM.getDataTransfer =<< DOM.event)
-      DOM.setEffectAllowed dt ("all" :: JSString)
-      DOM.setDropEffect dt ("move" :: JSString)
-      DOM.setData dt
-          ("application/x-reflex-description" :: JSString) attachment
-    -- Bit of a hack here; this actually hooks the drag-start
-    -- event to the DOM, since otherwise nothing reflex-side
-    -- cares about the event
-    performEvent_ $ return () <$ dragStartEvent
-    return ()
--}
 
 handleDragEvents
   :: ( DomBuilder t m

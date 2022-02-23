@@ -51,12 +51,11 @@ item2 = elAttr' "pre" ("draggable" =: "true"
       $ text "main = putStrLn \"Hello world!\""
 
 draggable
-  ::
-      ( DomBuilderSpace m ~ GhcjsDomSpace
-      , TriggerEvent t m
-      , MonadJSM m
-      , PerformEvent t m
-      )
+  :: ( DomBuilderSpace m ~ GhcjsDomSpace
+     , TriggerEvent t m
+     , MonadJSM m
+     , PerformEvent t m
+     )
   => m (Element EventResult (DomBuilderSpace m) t, ())
   -> String
   -> m ()

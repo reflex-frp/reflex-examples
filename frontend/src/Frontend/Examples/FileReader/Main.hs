@@ -11,6 +11,7 @@ import           Data.Maybe            (listToMaybe)
 import           Data.Monoid           ((<>))
 import           Data.Text             (Text)
 import qualified Data.Text             as T
+import qualified GHCJS.DOM.Types       as DOM
 import           GHCJS.DOM.EventM      (on)
 import           GHCJS.DOM.FileReader  (newFileReader, readAsDataURL, load
                                        , getResult)
@@ -20,9 +21,7 @@ import           Reflex.Dom
 app
   :: ( DomBuilder t m
      , MonadHold t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => m ()
 app = do
@@ -38,7 +37,7 @@ app = do
       . ffor urlE $ \url ->
           elAttr "img" ("src" =: url <> "style" =: "max-width: 80%") blank
 
-fileInputElement :: DomBuilder t m => m (Dynamic t [RawFile (DomBuilderSpace m)])
+fileInputElement :: DomBuilder t m => m (Dynamic t [DOM.File])
 fileInputElement = do
   ie <- inputElement $ def
     & inputElementConfig_elementConfig . elementConfig_initialAttributes .~
@@ -46,13 +45,13 @@ fileInputElement = do
   return (_inputElement_files ie)
 
 dataURLFileReader
-  :: ( DomBuilder t m
-     , TriggerEvent t m
-     , PerformEvent t m
-     , Prerender js m
+  :: forall t m js
+  .  ( DomBuilder t m
+     , Prerender js t m
      )
-  => Event t (RawFile (DomBuilderSpace m)) -> m (Event t Text)
-dataURLFileReader request = prerender (return never) $ do
+  => Event t DOM.File
+  -> m (Event t Text)
+dataURLFileReader request = fmap switchDyn $ prerender (return never) $ do
   fileReader <- liftJSM newFileReader
   performEvent_ (fmap (readAsDataURL fileReader . Just) request)
   e <- wrapDomEvent fileReader (`on` load) . liftJSM $ do

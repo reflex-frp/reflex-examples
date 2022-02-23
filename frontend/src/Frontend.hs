@@ -12,9 +12,11 @@ import Obelisk.Frontend
 import Obelisk.Route
 import Obelisk.Route.Frontend
 import Reflex.Dom.Core
-import qualified Obelisk.ExecutableConfig as Cfg
+import qualified Obelisk.Configs as Cfg
 
 import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8)
+import qualified Data.Map as Map
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Fix (MonadFix)
 import Common.Route
@@ -37,9 +39,10 @@ import qualified Frontend.Examples.WebSocketChat.Main as WebSocketChat
 
 frontend :: Frontend (R FrontendRoute)
 frontend = Frontend
-  { _frontend_head = pageHead
+  { _frontend_head = prerender_ pageHead pageHead
   , _frontend_body = do
-      r <- liftIO $ Cfg.get "config/common/route"
+      configs <- Cfg.getConfigs
+      let r = fmap decodeUtf8 $ Map.lookup "config/common/route" configs
       el "header" $ nav
       el "main" $ article $ subRoute_ $ \case
         FrontendRoute_Home -> home
@@ -53,9 +56,7 @@ examples
      , PostBuild t m
      , MonadFix m
      , MonadHold t m
-     , PerformEvent t m
-     , TriggerEvent t m
-     , Prerender js m
+     , Prerender js t m
      )
   => Maybe Text
   -> Dynamic t (R Example)

@@ -6,7 +6,6 @@ module Frontend.Examples.WebSocketEcho.Main where
 
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Reflex.Dom
-import Control.Monad      (join)
 import Control.Monad.Fix (MonadFix)
 
 app
@@ -14,7 +13,9 @@ app
      , MonadFix m
      , MonadHold t m
      , PostBuild t m
-     , Prerender js t m
+     , PerformEvent t m
+     , TriggerEvent t m
+     , Prerender js m
      )
   => m ()
 app = do
@@ -25,7 +26,7 @@ app = do
             $ tag (current $ value t)
             $ leftmost [b, keypress Enter t]
 
-  receivedMessages <- fmap join $ prerender (return (constDyn [])) $ do
+  receivedMessages <- prerender (return (constDyn [])) $ do
     ws <- webSocket "wss://echo.websocket.org" $ def
       & webSocketConfig_send .~ newMessage
     foldDyn (\m ms -> ms ++ [m]) [] $ _webSocket_recv ws

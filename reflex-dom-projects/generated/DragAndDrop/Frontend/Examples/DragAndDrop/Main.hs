@@ -26,13 +26,17 @@ import Reflex.Dom.Core
 
 app
   :: ( DomBuilder t m
-     , Prerender js t m
+     , MonadHold t m
+     , PostBuild t m
+     , PerformEvent t m
+     , TriggerEvent t m
+     , Prerender js m
      )
   => m ()
 app = do
   el "h3" $ text "Drag and Drop"
-  el "div" $ prerender_ blank $ draggable item1 "Haskell logo"
-  el "div" $ prerender_ blank $ draggable item2 "some text"
+  el "div" $ draggable item1 "Haskell logo"
+  el "div" $ draggable item2 "some text"
   text "Drap either the above logo or the text to the below box"
   handleDragEvents
   return ()
@@ -52,36 +56,40 @@ draggable
   :: ( DomBuilder t m
      , TriggerEvent t m
      , PerformEvent t m
-     , DomBuilderSpace m ~ GhcjsDomSpace
-     , MonadJSM m
+     , Prerender js m
      )
   => m (Element EventResult (DomBuilderSpace m) t, ())
   -> String
   -> m ()
 draggable elmnt attachment = do
   dragsite <- fst <$> elmnt
-  dragStartEvent <- wrapDomEvent -- (_el_element dragsite)
-            -- (DOM.getToElement $ _element_raw dragsite)
-            (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dragsite)
-            (`DOM.on` DOM.dragStart) $ do
-    dt <- fromMaybe (error "no dt?")
-      <$> (DOM.getDataTransfer =<< DOM.event)
-    DOM.setEffectAllowed dt ("all" :: JSString)
-    DOM.setDropEffect dt ("move" :: JSString)
-    DOM.setData dt
-        ("application/x-reflex-description" :: JSString) attachment
-  -- Bit of a hack here; this actually hooks the drag-start
-  -- event to the DOM, since otherwise nothing reflex-side
-  -- cares about the event
-  performEvent_ $ return () <$ dragStartEvent
-  return ()
+  prerender (return ()) $ do
+    dragStartEvent <- wrapDomEvent -- (_el_element dragsite)
+              -- (DOM.getToElement $ _element_raw dragsite)
+              (DOM.uncheckedCastTo DOM.HTMLElement $ _element_raw dragsite)
+              (`DOM.on` DOM.dragStart) $ do
+      dt <- fromMaybe (error "no dt?")
+        <$> (DOM.getDataTransfer =<< DOM.event)
+      DOM.setEffectAllowed dt ("all" :: JSString)
+      DOM.setDropEffect dt ("move" :: JSString)
+      DOM.setData dt
+          ("application/x-reflex-description" :: JSString) attachment
+    -- Bit of a hack here; this actually hooks the drag-start
+    -- event to the DOM, since otherwise nothing reflex-side
+    -- cares about the event
+    performEvent_ $ return () <$ dragStartEvent
+    return ()
 
 handleDragEvents
   :: ( DomBuilder t m
-     , Prerender js t m
+     , TriggerEvent t m
+     , PostBuild t m
+     , MonadHold t m
+     , PerformEvent t m
+     , Prerender js m
      )
   => m ()
-handleDragEvents = prerender_ (return ()) $ do
+handleDragEvents = prerender (return ()) $ do
   let
     ddEvent :: (DOM.DataTransfer -> DOM.EventM e DOM.MouseEvent a) ->
                DOM.EventM e DOM.MouseEvent a

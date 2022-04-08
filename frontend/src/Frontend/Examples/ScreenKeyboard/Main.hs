@@ -40,7 +40,9 @@ inputW
   :: ( DomBuilder t m
      , PerformEvent t m
      , MonadFix m
+     , MonadHold t m
      , MonadJSM (Performable m)
+     , DomRenderHook t m
      , DomBuilderSpace m ~ GhcjsDomSpace
      )
   => Event t Char
@@ -50,8 +52,24 @@ inputW buttonE = do
     let
       html = _inputElement_raw input     -- html element
       cur = current $ value input        -- actual string
-    input <- inputElement $ def
-      & inputElementConfig_setValue .~ fmap snd newStringE
+      cfg = def & inputElementConfig_setValue .~ fmap snd newStringE
+
+    input <- inputElement cfg
+    -- Use this to trigger an event *after* the value has been updated.
+    valueChangedBySetValue :: Event t String <-
+      case _inputElementConfig_setValue cfg of
+        Nothing -> return never
+        Just eSetValue -> requestDomAction $ getValue html <$ eSetValue
+
+    -- Keep focus on the HTML element and maintain our last known cursor
+    -- position.
+    latestPos <- holdDyn 0 $ fmap fst newStringE
+    latestVal <- holdDyn "" valueChangedBySetValue
+    void $ performArg (\(n, _) -> do
+      focus html
+      setSelectionStart html n
+      setSelectionEnd html n) (updated $ zipDynWith (,) latestPos latestVal)
+
     newStringE <- doStuff cur html buttonE
   return ()
 
@@ -70,7 +88,6 @@ doStuff cur html buttonE = do
     void $ (flip performArg) (fmap snd ev) $ \n -> do
       setSelectionStart html (n + 1)
       setSelectionEnd html (n + 1)
-    void $ performArg (const $ focus html) buttonE -- keep the focus right
     return ev
   let
     newStringE = attachWith (\v (c, n) -> (n + 1, insertAt n c v)) cur posCharE

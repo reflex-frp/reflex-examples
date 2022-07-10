@@ -15,6 +15,9 @@ module Common.Examples.Chess where
 -- Reflex, not to demonstrate chess, so this is not intended
 -- as an exemplary implementation of chess, just an example of
 -- an implementation of chess that might be integrated with Reflex.
+-- Among other things, it does not enforce all the rules of castling,
+-- and does not implement all the situations in which a stalemate
+-- can ensue.
 --
 -- It is kept separate from the frontend code because in Reflex,
 -- and in Haskell in general, it's important to separate something
@@ -105,12 +108,12 @@ validSquares = [Point i j | i <- [0..7], j <- [0..7]]
 promotionPieces :: [Piece]
 promotionPieces = [Queen, Rook, Bishop, Knight]
 
-isValidSquare :: Point -> Bool
-isValidSquare (Point x y) = x <= 7 && y <= 7
+isValidPoint :: Point -> Bool
+isValidPoint (Point x y) = x <= 7 && y <= 7
 
 indexGS :: GameState -> Point -> Maybe ColoredPiece
 gs `indexGS` point = do
-  guard $ isValidSquare point
+  guard $ isValidPoint point
   gameState_board gs A.! point
 
 -- | Can check whether either player is in check, for checkmate purposes
@@ -204,7 +207,7 @@ basicMove promotionPiece brd turn old new = do
           step diff' x' = if diff' > 0
             then x' + 1
             else x' - 1
-          steps = takeWhile (/= new) $ iterate nextStep $ nextStep old
+          steps = takeWhile (/= new) $ takeWhile isValidPoint $ iterate nextStep $ nextStep old
 
       -- in the form of potential additional board modifications
       -- some special moves

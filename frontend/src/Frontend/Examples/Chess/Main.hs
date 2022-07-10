@@ -44,10 +44,10 @@ row
   :: ( DomBuilder t m
      , PostBuild t m
      )
-  => Dynamic t WidgetState -> Dynamic t (Maybe GameState) -> Int ->  m (Event t Point)
+  => Dynamic t WidgetState -> Dynamic t (Maybe GameState) -> Word ->  m (Event t Point)
 row ws dmGs j =
   el "tr" $ do
-    cells <- mapM (cell ws dmGs) [(i, j) | i <- [0..7]]
+    cells <- mapM (cell ws dmGs) [Point i j | i <- [0..7]]
     pure $ leftmost cells
 
 cell
@@ -61,14 +61,17 @@ cell ws dmGs p = el "td" $ do
     where
       coloredPiece mgs = do
         gs <- mgs
-        gs <!> p
+        gs `indexGS` p
       imgTag (WidgetState active _) mgs = "src" =: translate (coloredPiece mgs)
         <> "style" =: ("display: block; width: 45px; height: 45px; background-color: " <> backgroundColor active)
         <> "draggable" =: "false"
+
       backgroundColor (Just p') | p == p' = "yellow"
       backgroundColor _                   = defaultColor p
-      defaultColor (i,j) | (i + j) `mod` 2 == 0 = "grey"
-                         | otherwise            = "white"
+
+      defaultColor (Point i j) | (i + j) `mod` 2 == 0 = "grey"
+                               | otherwise            = "white"
+
       translate (Just (ColoredPiece clr pp)) = translatePiece clr pp
       translate _                 = $(static "chess/blank.svg")
       translatePiece White King   = $(static "chess/kl.svg")
@@ -90,16 +93,16 @@ handleClick (WidgetState highlight promotion, mBoard) new = (WidgetState newHigh
     board <- mBoard
     guard $ isNothing highlight
     guard $ isNothing mMove
-    case board <!> new of
-      Just (ColoredPiece color _) | color == gameStateTurn board -> pure new
-      _                                                          -> Nothing
+    case board `indexGS` new of
+      Just (ColoredPiece color _) | color == gameState_turn board -> pure new
+      _                                                           -> Nothing
   mMove = do
     case highlight of
       Just old -> do
         moveFrom old
       Nothing -> do
         board <- mBoard
-        guard $ not $ configSelfCapture $ gameStateConfig board
+        guard $ not $ config_selfCapture $ gameState_config board
         [mv] <- pure $ do
           old <- validSquares
           Just mv <- pure $ moveFrom old
@@ -107,7 +110,7 @@ handleClick (WidgetState highlight promotion, mBoard) new = (WidgetState newHigh
         pure mv
   moveFrom old = do
     board <- mBoard
-    let mv = Move old new (gameStateTurn board) promotion
+    let mv = Move old new (gameState_turn board) promotion
     void $ move board mv
     pure mv
 
@@ -176,7 +179,7 @@ pieceText piece (WidgetState _ piece') | piece == piece' = "*" <> show piece
 scenarioText :: Maybe GameState -> String
 scenarioText Nothing = "Game is loading..."
 scenarioText (Just board) = show turn <> checkText where
-  turn = gameStateTurn board
+  turn = gameState_turn board
   checkText | inCheckmate board = " has been checkmated"
             | inStalemate board = " would be next, but it's a stalemate"
             | inCheck board turn     = "'s turn -- to get out of check"

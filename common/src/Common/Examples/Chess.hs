@@ -11,7 +11,15 @@
 
 module Common.Examples.Chess where
 -- This implements the game rules of chess, without any Reflex
--- or frontend code.
+-- or frontend code. The purpose of this repo is to demonstrate
+-- Reflex, not to demonstrate chess, so this is not intended
+-- as an exemplary implementation of chess, just an example of
+-- an implementation of chess that might be integrated with Reflex.
+--
+-- It is kept separate from the frontend code because in Reflex,
+-- and in Haskell in general, it's important to separate something
+-- that can be written purely (like the rules of chess) from something
+-- from interface code (like the Reflex frontend to it).
 
 import Control.Monad
 import qualified Data.Array.IArray as A
@@ -20,7 +28,16 @@ import Data.Maybe
 import Data.Ord
 import GHC.Generics
 
-type Point = (Int, Int)
+data Point = Point Word Word
+    deriving (Eq, Show, Ord)
+
+pointToTuple (Point x y) = (x, y)
+tupleToPoint (x, y) = Point x y
+
+instance A.Ix Point where
+    range (p1, p2) = map tupleToPoint $ A.range (pointToTuple p1, pointToTuple p2)
+    index (p1, p2) p3 = A.index (pointToTuple p1, pointToTuple p2) (pointToTuple p3)
+    inRange (p1, p2) p3 = A.inRange (pointToTuple p1, pointToTuple p2) (pointToTuple p3)
 
 data Color = White | Black deriving (Eq, Show)
 data Piece = King | Queen | Rook | Bishop | Knight | Pawn deriving (Eq, Show)
@@ -33,8 +50,8 @@ instance Show ColoredPiece where
 type Board = A.Array Point (Maybe ColoredPiece)
 
 initialBoard :: Board
-initialBoard = A.array ((0, 0), (7,7))
-               [ ((i, j), square i j) | i <- [0..7], j <- [0..7] ]
+initialBoard = A.array (Point 0 0, Point 7 7)
+               [ (Point i j, square i j) | i <- [0..7], j <- [0..7] ]
   where
     initialColor n | n >= 6 = Just Black
                    | n <= 1 = Just White
@@ -53,7 +70,6 @@ initialBoard = A.array ((0, 0), (7,7))
                 7 -> Just Rook
                 _ -> Nothing
               | otherwise = Nothing
-    square :: Int -> Int -> Maybe ColoredPiece
     square i j = ColoredPiece <$> initialColor j <*> piece i j
 
 data CastleState = CastleState
@@ -62,46 +78,46 @@ data CastleState = CastleState
   } deriving (Show, Eq)
 
 data ChessConfig = ChessConfig
-  { configSelfCapture :: Bool
+  { config_selfCapture :: Bool
   } deriving (Eq, Show)
 
 data GameState = GameState
-  { gameStateBoard       :: Board
-  , gameStateTurn        :: Color
-  , gameStateCastle      :: Color -> CastleState
-  , gameStatePhantomPawn :: (Maybe Point)
-  , gameStateMoveCount   :: Int
-  , gameStateConfig      :: ChessConfig
+  { gameState_board       :: Board
+  , gameState_turn        :: Color
+  , gameState_castle      :: Color -> CastleState
+  , gameState_phantomPawn :: (Maybe Point)
+  , gameState_moveCount   :: Int
+  , gameState_config      :: ChessConfig
   } deriving Eq
 
 instance Eq (Color -> CastleState) where
   a == b = a White == b White && a Black == b Black
 
 instance Ord GameState where
-  compare = comparing gameStateMoveCount
+  compare = comparing gameState_moveCount
 
 initialGS :: ChessConfig -> GameState
 initialGS config = GameState initialBoard White (const $ CastleState True True) Nothing 0 config
 
 validSquares :: [Point]
-validSquares = [(i, j) | i <- [0..7], j <- [0..7]]
+validSquares = [Point i j | i <- [0..7], j <- [0..7]]
 
 promotionPieces :: [Piece]
 promotionPieces = [Queen, Rook, Bishop, Knight]
 
 isValidSquare :: Point -> Bool
-isValidSquare (x, y) = x >= 0 && y >= 0 && x <= 7 && y <= 7
+isValidSquare (Point x y) = x <= 7 && y <= 7
 
-(<!>) :: GameState -> Point -> Maybe ColoredPiece
-gs <!> point = do
+indexGS :: GameState -> Point -> Maybe ColoredPiece
+gs `indexGS` point = do
   guard $ isValidSquare point
-  gameStateBoard gs A.! point
+  gameState_board gs A.! point
 
--- Can check whether either player is in check, for checkmate purposes
+-- | Can check whether either player is in check, for checkmate purposes
 inCheck :: GameState -> Color -> Bool
 inCheck board turn = not $ null $ do
   new <- validSquares
-  Just (ColoredPiece newColor King) <- pure $ board <!> new
+  Just (ColoredPiece newColor King) <- pure $ board `indexGS` new
   guard $ newColor == turn
 
   old <- validSquares
@@ -110,7 +126,7 @@ inCheck board turn = not $ null $ do
 
 inCheckmate :: GameState -> Bool
 inCheckmate board = inCheck board turn && null escapeScenarios where
-  turn = gameStateTurn board
+  turn = gameState_turn board
   escapeScenarios = do
     old <- validSquares
     new <- validSquares
@@ -127,10 +143,10 @@ inStalemate board = or
     old <- validSquares
     new <- validSquares
     piece <- promotionPieces
-    maybeToList $ move board $ Move old new (gameStateTurn board) piece
+    maybeToList $ move board $ Move old new (gameState_turn board) piece
   playerPieces player = do
     square <- validSquares
-    Just (ColoredPiece color piece) <- pure $ board <!> square
+    Just (ColoredPiece color piece) <- pure $ board `indexGS` square
     guard $ color == player
     pure piece
 
@@ -149,58 +165,59 @@ data Move = Move
 
 move :: GameState -> Move -> Maybe GameState
 move board (Move old new turn piece) = do
-  guard $ turn == gameStateTurn board
+  guard $ turn == gameState_turn board
   newBoard <- basicMove piece board turn old new
   guard $ not $ inCheck newBoard turn
   pure newBoard
 
 -- basicMove is parameterized on who is moving to allow checking for check
+-- TODO: This is a gnarly piece of code that could be much better factored
 basicMove :: Piece -> GameState -> Color -> Point -> Point -> Maybe GameState
 basicMove promotionPiece brd turn old new = do
-  oldSquare@(Just (ColoredPiece color piece)) <- pure $ brd <!> old
+  oldSquare@(Just (ColoredPiece color piece)) <- pure $ brd `indexGS` old
   guard $ turn == color
   guard $ old /= new
   guard $ promotionPiece `elem` promotionPieces
-  let dest = brd <!> new
+  let dest = brd `indexGS` new
 
   isCapture <- case dest of
     Just (ColoredPiece destColor _) -> do
-      when (not $ configSelfCapture $ gameStateConfig brd) $ guard $ destColor /= turn
+      when (not $ config_selfCapture $ gameState_config brd) $ guard $ destColor /= turn
       pure True
     Nothing -> pure False
 
-  let ((oldX, oldY), (newX, newY)) = (old, new)
-      diffX = newX - oldX
-      diffY = newY - oldY
+  let (Point oldX oldY, Point newX newY) = (old, new)
+      diffX = toInteger newX - toInteger oldX
+      diffY = toInteger newY - toInteger oldY
+      absDiffX = abs diffX
+      absDiffY = abs diffY
 
       rookLike = diffX == 0 || diffY == 0
-      bishopLike = abs diffX == abs diffY
+      bishopLike = absDiffX == absDiffY
       pawnLike = diffX == 0 && (diffY == pawnDirection || diffY == 2 * pawnDirection && oldY == pawnRow)
-      pawnCaptureLike = diffY == pawnDirection && abs diffX == 1
-      knightLike = (abs diffX == 1 && abs diffY == 2) || (abs diffX == 2 && abs diffY == 1)
-      kingLike = abs diffX <= 1 && abs diffY <= 1
+      pawnCaptureLike = diffY == pawnDirection && absDiffX == 1
+      knightLike = (absDiffX == 1 && absDiffY == 2) || (absDiffX == 2 && absDiffY == 1)
+      kingLike = absDiffX <= 1 && absDiffY <= 1
 
-      stepX = signum diffX
-      stepY = signum diffY
-      nextStep (x, y) = (x + stepX, y + stepY)
-      -- theoretically, the `takeWhile isValidSquare` should be unnecessary
-      -- but I'm including it anyway so this value is always finite even with
-      -- knight's moves
-      steps = takeWhile (/= new) $ takeWhile isValidSquare $ iterate nextStep $ nextStep old
-      clearPath = all isNothing $ (brd <!>) <$> steps
+      clearPath = all isNothing $ (brd `indexGS`) <$> steps where
+          nextStep (Point x y) = Point (step diffX x) (step diffY y)
+          step diff' x' = if diff' > 0
+            then x' + 1
+            else x' - 1
+          steps = takeWhile (/= new) $ iterate nextStep $ nextStep old
 
       -- in the form of potential additional board modifications
       -- some special moves
       enPassant :: [(Point, Maybe ColoredPiece)]
       enPassant = fromMaybe [] $ do
         Pawn <- pure piece
-        phantom@(phantomX, _) <- gameStatePhantomPawn brd
+        phantom@(Point phantomX _) <- gameState_phantomPawn brd
         guard pawnCaptureLike
         guard $ new == phantom
         let
           coordinates = case turn of
-            White -> (phantomX, 4)
-            Black -> (phantomX, 3)
+            White -> Point phantomX 4
+            Black -> Point phantomX 3
         pure [(coordinates, Nothing)]
 
       promotion :: [(Point, Maybe ColoredPiece)]
@@ -212,7 +229,7 @@ basicMove promotionPiece brd turn old new = do
           _          -> False
         pure [(new, Just (ColoredPiece turn promotionPiece))]
 
-      oldCastleState = gameStateCastle brd turn
+      oldCastleState = gameState_castle brd turn
 
       -- TODO: Handle e.g. in check restriction, other restrictions
       castle :: [(Point, Maybe ColoredPiece)]
@@ -225,10 +242,10 @@ basicMove promotionPiece brd turn old new = do
         guard $ test oldCastleState
         guard clearPath
         -- TODO: Check that all squares the rook traverses are not under attack.
-        let rookOld = (rookX, oldY)
-            rookNew = (oldX + stepX, newY)
+        let rookOld = Point rookX oldY
+            rookNew = Point (if diffX > 0 then oldX + 1 else oldX - 1) newY
         _ <- basicMove Queen brd turn rookOld rookNew
-        let rook = brd <!> rookOld
+        let rook = brd `indexGS` rookOld
         pure $ [(rookOld, Nothing), (rookNew, rook)]
 
   case piece of
@@ -245,24 +262,25 @@ basicMove promotionPiece brd turn old new = do
     King | otherwise      -> pure ()
 
   let
-    newGameStateCastle clr | clr /= turn = gameStateCastle brd clr
+    newGameStateCastle clr | clr /= turn = gameState_castle brd clr
                            | otherwise   = case (piece, oldX) of
       (King, _) -> CastleState False False
       (Rook, 7) -> oldCastleState { canCastleKingSide = False }
       (Rook, 0) -> oldCastleState { canCastleQueenSide = False }
       _         -> oldCastleState
     changes = [(old, Nothing), (new, oldSquare)] <> enPassant <> castle <> promotion
+    steppedY = if diffY > 0 then oldY + 1 else oldY - 1
 
   pure $ GameState
-    { gameStateBoard = gameStateBoard brd A.// changes
-    , gameStateTurn = opponent turn
-    , gameStateCastle = newGameStateCastle
-    , gameStatePhantomPawn = do
+    { gameState_board = gameState_board brd A.// changes
+    , gameState_turn = opponent turn
+    , gameState_castle = newGameStateCastle
+    , gameState_phantomPawn = do
         Pawn <- pure piece
-        guard $ abs diffY == 2
-        pure $ (oldX, oldY + stepY)
-    , gameStateMoveCount = gameStateMoveCount brd + 1
-    , gameStateConfig = gameStateConfig brd
+        guard $ absDiffY == 2
+        pure $ Point oldX steppedY
+    , gameState_moveCount = gameState_moveCount brd + 1
+    , gameState_config = gameState_config brd
     }
 
   where

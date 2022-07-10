@@ -10,6 +10,8 @@
 {-# LANGUAGE DataKinds             #-}
 
 module Common.Examples.Chess where
+-- This implements the game rules of chess, without any Reflex
+-- or frontend code.
 
 import Control.Monad
 import qualified Data.Array.IArray as A

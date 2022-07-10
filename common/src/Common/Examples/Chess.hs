@@ -42,10 +42,7 @@ instance A.Ix Point where
 data Color = White | Black deriving (Eq, Show)
 data Piece = King | Queen | Rook | Bishop | Knight | Pawn deriving (Eq, Show)
 
-data ColoredPiece = ColoredPiece Color Piece deriving (Eq)
-
-instance Show ColoredPiece where
-  show (ColoredPiece clr p) = show clr <> " " <> show p
+data ColoredPiece = ColoredPiece Color Piece deriving (Eq, Show)
 
 type Board = A.Array Point (Maybe ColoredPiece)
 
@@ -88,10 +85,13 @@ data GameState = GameState
   , gameState_phantomPawn :: (Maybe Point)
   , gameState_moveCount   :: Int
   , gameState_config      :: ChessConfig
-  } deriving Eq
+  } deriving (Eq, Show)
 
 instance Eq (Color -> CastleState) where
   a == b = a White == b White && a Black == b Black
+
+instance Show (Color -> CastleState) where
+  show s = show (s White) <> " " <> show (s Black)
 
 instance Ord GameState where
   compare = comparing gameState_moveCount

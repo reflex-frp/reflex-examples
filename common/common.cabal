@@ -16,3 +16,4 @@ library
     Common.Api
     Common.Route
     Common.Examples.WebSocketChat.Message
+    Common.Examples.Chess

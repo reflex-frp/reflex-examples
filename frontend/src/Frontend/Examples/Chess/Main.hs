@@ -133,7 +133,10 @@ localChessBoard
      )
   => m ()
 localChessBoard = do
-    let initial = initialGS $ ChessConfig False -- no self-capture
+    let initial = initialGS $ ChessConfig
+            -- TODO: Expose the feature or get rid of it
+            { config_selfCapture = False
+            }
         mkMove mBoard mv = do
           board <- mBoard
           move board mv

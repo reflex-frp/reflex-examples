@@ -9,8 +9,7 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE DataKinds             #-}
 
-module Common.Examples.Chess where
--- This implements the game rules of chess, without any Reflex
+-- | This implements the game rules of chess, without any Reflex
 -- or frontend code. The purpose of this repo is to demonstrate
 -- Reflex, not to demonstrate chess, so this is not intended
 -- as an exemplary implementation of chess, just an example of
@@ -23,6 +22,7 @@ module Common.Examples.Chess where
 -- and in Haskell in general, it's important to separate something
 -- that can be written purely (like the rules of chess) from something
 -- from interface code (like the Reflex frontend to it).
+module Common.Examples.Chess where
 
 import Control.Monad
 import qualified Data.Array.IArray as A

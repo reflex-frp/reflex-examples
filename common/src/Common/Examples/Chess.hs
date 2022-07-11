@@ -73,8 +73,8 @@ initialBoard = A.array (Point 0 0, Point 7 7)
     square i j = ColoredPiece <$> initialColor j <*> piece i j
 
 data CastleState = CastleState
-  { canCastleQueenSide :: Bool
-  , canCastleKingSide  :: Bool
+  { canCastle_queenSide :: Bool
+  , canCastle_kingSide  :: Bool
   } deriving (Show, Eq)
 
 data ChessConfig = ChessConfig
@@ -239,8 +239,8 @@ basicMove promotionPiece brd turn old new = do
       castle = fromMaybe [] $ do
         King <- pure piece
         (test, rookX) <- case diffX of
-          -2 -> pure (canCastleQueenSide, 0)
-          2  -> pure (canCastleKingSide, 7)
+          -2 -> pure (canCastle_queenSide, 0)
+          2  -> pure (canCastle_kingSide, 7)
           _  -> Nothing
         guard $ test oldCastleState
         guard clearPath
@@ -268,8 +268,8 @@ basicMove promotionPiece brd turn old new = do
     newGameStateCastle clr | clr /= turn = gameState_castle brd clr
                            | otherwise   = case (piece, oldX) of
       (King, _) -> CastleState False False
-      (Rook, 7) -> oldCastleState { canCastleKingSide = False }
-      (Rook, 0) -> oldCastleState { canCastleQueenSide = False }
+      (Rook, 7) -> oldCastleState { canCastle_kingSide = False }
+      (Rook, 0) -> oldCastleState { canCastle_queenSide = False }
       _         -> oldCastleState
     changes = [(old, Nothing), (new, oldSquare)] <> enPassant <> castle <> promotion
     steppedY = if diffY > 0 then oldY + 1 else oldY - 1

@@ -34,35 +34,33 @@ mkBoard
   :: ( DomBuilder t m
      , PostBuild t m
      )
-  => Dynamic t WidgetState -> Dynamic t (Maybe GameState) -> m (Event t Point)
-mkBoard ws dmGs =
+  => Dynamic t WidgetState -> Dynamic t GameState -> m (Event t Point)
+mkBoard ws dGs =
   elAttr "table" ("style" =: "margin-left: auto; margin-right: auto") $ el "tbody" $ do
-    rows <- mapM (row ws dmGs) [7, 6..0]
+    rows <- mapM (row ws dGs) [7, 6..0]
     pure $ leftmost rows
 
 row
   :: ( DomBuilder t m
      , PostBuild t m
      )
-  => Dynamic t WidgetState -> Dynamic t (Maybe GameState) -> Word ->  m (Event t Point)
-row ws dmGs j =
+  => Dynamic t WidgetState -> Dynamic t GameState -> Word ->  m (Event t Point)
+row ws dGs j =
   el "tr" $ do
-    cells <- mapM (cell ws dmGs) [Point i j | i <- [0..7]]
+    cells <- mapM (cell ws dGs) [Point i j | i <- [0..7]]
     pure $ leftmost cells
 
 cell
   :: ( DomBuilder t m
      , PostBuild t m
      )
-  => Dynamic t WidgetState -> Dynamic t (Maybe GameState) -> Point -> m (Event t Point)
-cell ws dmGs p = el "td" $ do
-    (e, _) <- elDynAttr' "img" (imgTag <$> ws <*> dmGs) $ pure ()
+  => Dynamic t WidgetState -> Dynamic t GameState -> Point -> m (Event t Point)
+cell ws dGs p = el "td" $ do
+    (e, _) <- elDynAttr' "img" (imgTag <$> ws <*> dGs) $ pure ()
     pure $ p <$ domEvent Click e
     where
-      coloredPiece mgs = do
-        gs <- mgs
-        gs `indexGS` p
-      imgTag (WidgetState active _) mgs = "src" =: translate (coloredPiece mgs)
+      coloredPiece gs = gs `indexGS` p
+      imgTag (WidgetState active _) gs = "src" =: translate (coloredPiece gs)
         <> "style" =: ("display: block; width: 45px; height: 45px; background-color: " <> backgroundColor active)
         <> "draggable" =: "false"
 
@@ -87,10 +85,9 @@ cell ws dmGs p = el "td" $ do
       translatePiece Black Knight = $(static "chess/nd.svg")
       translatePiece Black Pawn   = $(static "chess/pd.svg")
 
-handleClick :: (WidgetState, Maybe GameState) -> Point -> (WidgetState, Maybe Move)
-handleClick (WidgetState highlight promotion, mBoard) new = (WidgetState newHighlight promotion, mMove) where
+handleClick :: (WidgetState, GameState) -> Point -> (WidgetState, Maybe Move)
+handleClick (WidgetState highlight promotion, board) new = (WidgetState newHighlight promotion, mMove) where
   newHighlight = do
-    board <- mBoard
     guard $ isNothing highlight
     guard $ isNothing mMove
     case board `indexGS` new of
@@ -101,7 +98,6 @@ handleClick (WidgetState highlight promotion, mBoard) new = (WidgetState newHigh
       Just old -> do
         moveFrom old
       Nothing -> do
-        board <- mBoard
         guard $ not $ config_selfCapture $ gameState_config board
         [mv] <- pure $ do
           old <- validSquares
@@ -109,7 +105,6 @@ handleClick (WidgetState highlight promotion, mBoard) new = (WidgetState newHigh
           pure mv
         pure mv
   moveFrom old = do
-    board <- mBoard
     let mv = Move old new (gameState_turn board) promotion
     void $ move board mv
     pure mv
@@ -137,11 +132,8 @@ localChessBoard = do
             -- TODO: Expose the feature or get rid of it
             { config_selfCapture = False
             }
-        mkMove mBoard mv = do
-          board <- mBoard
-          move board mv
     rec
-        localBoard <- holdDyn (Just initial) $ attachWith mkMove (current localBoard) chessMove
+        localBoard <- holdDyn initial $ fmapMaybe id $ attachWith move (current localBoard) chessMove
         chessMove <- chessBoard localBoard
     pure ()
 
@@ -152,7 +144,7 @@ chessBoard
      , MonadHold t m
      , PostBuild t m
      )
-  => Dynamic t (Maybe GameState)
+  => Dynamic t GameState
   -> m (Event t Move)
 chessBoard mGameState = el "div" $ do
   elAttr "div" ("style" =: "text-align: center") $ do
@@ -179,9 +171,8 @@ pieceText :: Piece -> WidgetState -> String
 pieceText piece (WidgetState _ piece') | piece == piece' = "*" <> show piece
                                        | otherwise       = show piece
 
-scenarioText :: Maybe GameState -> String
-scenarioText Nothing = "Game is loading..."
-scenarioText (Just board) = show turn <> checkText where
+scenarioText :: GameState -> String
+scenarioText board = show turn <> checkText where
   turn = gameState_turn board
   checkText | inCheckmate board = " has been checkmated"
             | inStalemate board = " would be next, but it's a stalemate"

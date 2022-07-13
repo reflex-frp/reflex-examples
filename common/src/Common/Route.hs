@@ -45,6 +45,7 @@ deriving instance Show (FrontendRoute a)
 
 data Example :: * -> * where
   Example_BasicToDo :: Example ()
+  Example_Chess :: Example ()
   Example_DragAndDrop :: Example ()
   Example_FileReader :: Example ()
   Example_ScreenKeyboard :: Example ()
@@ -69,6 +70,7 @@ fullRouteEncoder = mkFullRouteEncoder (FullRoute_Backend BackendRoute_Missing :/
     FrontendRoute_Home -> PathEnd $ unitEncoder mempty
     FrontendRoute_Examples -> PathSegment "examples" $ maybeEncoder (unitEncoder mempty) $ pathComponentEncoder $ \case
       Example_BasicToDo -> PathSegment "basictodo" $ unitEncoder mempty
+      Example_Chess -> PathSegment "chess" $ unitEncoder mempty
       Example_DragAndDrop -> PathSegment "draganddrop" $ unitEncoder mempty
       Example_FileReader -> PathSegment "filereader" $ unitEncoder mempty
       Example_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
@@ -91,6 +93,7 @@ concat <$> mapM deriveRouteComponent
 exampleTitle :: Some Example -> Text
 exampleTitle (Some.Some sec) = case sec of
   Example_BasicToDo -> "Basic To Do List"
+  Example_Chess -> "Local Chess Game"
   Example_DragAndDrop -> "Drag n Drop"
   Example_FileReader -> "File Reader"
   Example_ScreenKeyboard -> "Onscreen Keyboard"
@@ -115,6 +118,7 @@ routeTitle = \case
 sectionHomepage :: Some Example -> R Example
 sectionHomepage (Some.Some sec) = sec :/ case sec of
   Example_BasicToDo -> ()
+  Example_Chess -> ()
   Example_DragAndDrop -> ()
   Example_FileReader -> ()
   Example_ScreenKeyboard -> ()
@@ -130,6 +134,7 @@ sectionHomepage (Some.Some sec) = sec :/ case sec of
 exampleDescription :: Some Example -> Text
 exampleDescription (Some.Some sec) = case sec of
   Example_BasicToDo -> "A simple To-Do list app with user input handling and state management."
+  Example_Chess -> "A simple chess game to be played against another local player"
   Example_DragAndDrop ->
     "An example to demonstrate Drag and Drop functionality"
   Example_FileReader ->
@@ -179,6 +184,7 @@ exampleSourceCode (sec :=> _) = base <> path <> file
     file = "/Main.hs"
     path = case sec of
       Example_BasicToDo -> "BasicToDo"
+      Example_Chess -> "Chess"
       Example_DragAndDrop -> "DragAndDrop"
       Example_FileReader -> "FileReader"
       Example_ScreenKeyboard -> "ScreenKeyboard"

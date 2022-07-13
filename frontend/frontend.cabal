@@ -38,6 +38,7 @@ library
     Frontend.Home
     Frontend.Nav
     Frontend.Examples.BasicToDo.Main
+    Frontend.Examples.Chess.Main
     Frontend.Examples.DisplayGameUpdates.Main
     Frontend.Examples.DragAndDrop.Main
     Frontend.Examples.FileReader.Main

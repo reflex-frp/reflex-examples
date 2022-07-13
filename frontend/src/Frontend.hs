@@ -25,6 +25,7 @@ import Frontend.Home
 import Frontend.Nav
 
 import qualified Frontend.Examples.BasicToDo.Main as BasicToDo
+import qualified Frontend.Examples.Chess.Main as Chess
 import qualified Frontend.Examples.DragAndDrop.Main as DragAndDrop
 import qualified Frontend.Examples.FileReader.Main as FileReader
 import qualified Frontend.Examples.ScreenKeyboard.Main as ScreenKeyboard
@@ -62,6 +63,7 @@ examples
   -> RoutedT t (R Example) m ()
 examples route _ = subRoute_ $ \case
   Example_BasicToDo -> BasicToDo.app
+  Example_Chess -> Chess.app
   Example_DragAndDrop -> DragAndDrop.app
   Example_FileReader -> FileReader.app
   Example_ScreenKeyboard -> ScreenKeyboard.app

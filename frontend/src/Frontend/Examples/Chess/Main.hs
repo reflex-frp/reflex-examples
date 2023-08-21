@@ -28,7 +28,10 @@ data WidgetState = WidgetState
   }
 
 initialWidgetState :: WidgetState
-initialWidgetState = WidgetState Nothing Queen
+initialWidgetState = WidgetState
+  { widgetStateMoveStart = Nothing
+  , widgetStatePromotion = Queen
+  }
 
 mkBoard
   :: ( DomBuilder t m

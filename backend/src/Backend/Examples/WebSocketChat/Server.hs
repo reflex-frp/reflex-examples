@@ -1,23 +1,22 @@
+{-# options_ghc -fno-warn-deprecations #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Backend.Examples.WebSocketChat.Server where
 
-import           Control.Concurrent (MVar, modifyMVar, modifyMVar_,
-                                     readMVar)
-import           Control.Exception  (finally)
-import           Control.Monad      (forM_, forever)
-import           Data.Aeson         (encode, decode)
-import qualified Data.ByteString    as B
-import           Data.ByteString.Lazy (toStrict)
-import           Data.Char          (isPunctuation, isSpace)
-import           Data.Semigroup     ((<>))
-import           Data.Text          (Text)
-import qualified Data.Text          as T
-import qualified Data.Text.IO       as T
+import Control.Concurrent (MVar, modifyMVar, modifyMVar_, readMVar)
+import Control.Exception (finally)
+import Control.Monad (forM_, forever)
+import Data.Aeson (decode, encode)
+import qualified Data.ByteString as B
+import Data.ByteString.Lazy (toStrict)
+import Data.Char (isPunctuation, isSpace)
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import qualified Network.WebSockets as WS
 
 --------------------------------------------------------------------------------
-import           Common.Examples.WebSocketChat.Message
+import Common.Examples.WebSocketChat.Message
 --------------------------------------------------------------------------------
 
 type Client = (Text, WS.Connection)
@@ -42,7 +41,6 @@ removeClient client = filter ((/= fst client) . fst)
 broadcast :: Text -> ServerState -> IO ()
 broadcast message clients = do
     T.putStrLn message
-    -- forM_ clients $ \(_, conn) -> WS.sendTextData conn message
     forM_ clients $ \(_, conn) -> WS.sendTextData conn $
         (toStrict . encode . S2Cbroadcast) message
 
@@ -52,12 +50,6 @@ application state pending = do
     WS.forkPingThread conn 30
     msgbs <- WS.receiveData conn :: IO B.ByteString
     let msgC = decode $ WS.toLazyByteString msgbs :: Maybe C2S
-        -- msg = case msgC of
-        --     Just (C2Sjoin txt) -> txt
-        --     Just C2Sclose      -> "close msg"
-        --     Just (C2Smsg txt)  -> txt
-        --     Nothing            -> "hmm nothing"
-    -- T.putStrLn $ "msg = " <> msg
     clients <- readMVar state
     case msgC of
         Nothing           ->
@@ -101,5 +93,3 @@ talk conn state (user, _) = forever $ do
             T.putStrLn $ "C2Sjoin should not happen here, nm =" <> nm
         Just (C2Smsg txt) ->
             readMVar state >>= broadcast (user <> ": " <> txt)
-
-

@@ -8,17 +8,18 @@
 {-# LANGUAGE GADTs #-}
 module Frontend where
 
+import qualified Obelisk.Configs as Cfg
 import Obelisk.Frontend
 import Obelisk.Route
 import Obelisk.Route.Frontend
 import Reflex.Dom.Core
-import qualified Obelisk.Configs as Cfg
 
-import Data.Text (Text)
-import qualified Data.Map as Map
-import Data.Text.Encoding (decodeUtf8)
-import Control.Monad.Fix (MonadFix)
 import Common.Route
+import Control.Monad.Fix (MonadFix)
+import qualified Data.Map as Map
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Text.Encoding (decodeUtf8)
 
 import Frontend.Head
 import Frontend.Home
@@ -26,23 +27,23 @@ import Frontend.Nav
 
 import qualified Frontend.Examples.BasicToDo.Main as BasicToDo
 import qualified Frontend.Examples.Chess.Main as Chess
+import qualified Frontend.Examples.DisplayGameUpdates.Main as DisplayGameUpdates
 import qualified Frontend.Examples.DragAndDrop.Main as DragAndDrop
+import qualified Frontend.Examples.ECharts.Main as ECharts
 import qualified Frontend.Examples.FileReader.Main as FileReader
-import qualified Frontend.Examples.ScreenKeyboard.Main as ScreenKeyboard
 import qualified Frontend.Examples.NasaPod.Main as NasaPod
 import qualified Frontend.Examples.PegSolitaire.Main as PegSolitaire
+import qualified Frontend.Examples.ScreenKeyboard.Main as ScreenKeyboard
 import qualified Frontend.Examples.TicTacToe.Main as TicTacToe
-import qualified Frontend.Examples.DisplayGameUpdates.Main as DisplayGameUpdates
-import qualified Frontend.Examples.ECharts.Main as ECharts
-import qualified Frontend.Examples.WebSocketEcho.Main as WebSocketEcho
 import qualified Frontend.Examples.WebSocketChat.Main as WebSocketChat
+import qualified Frontend.Examples.WebSocketEcho.Main as WebSocketEcho
 
 frontend :: Frontend (R FrontendRoute)
 frontend = Frontend
   { _frontend_head = pageHead
   , _frontend_body = do
       configs <- Cfg.getConfigs
-      let r = fmap decodeUtf8 $ Map.lookup "config/common/route" configs
+      let r = fmap (T.strip . decodeUtf8) $ Map.lookup "common/route" configs
       el "header" $ nav
       el "main" $ article $ subRoute_ $ \case
         FrontendRoute_Home -> home

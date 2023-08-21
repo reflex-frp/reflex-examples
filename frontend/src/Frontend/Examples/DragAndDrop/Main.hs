@@ -12,20 +12,19 @@
 
 module Frontend.Examples.DragAndDrop.Main where
 
-import           Data.Maybe                (fromMaybe)
-import           Data.Monoid               ((<>))
-import qualified GHCJS.DOM.DataTransfer    as DOM
-import qualified GHCJS.DOM.HTMLElement     as DOM
-import qualified GHCJS.DOM.Element         as DOM
-import qualified GHCJS.DOM.EventM          as DOM
+import Data.Maybe (fromMaybe)
+import qualified GHCJS.DOM.DataTransfer as DOM
+import qualified GHCJS.DOM.Element as DOM
+import qualified GHCJS.DOM.EventM as DOM
 import qualified GHCJS.DOM.GlobalEventHandlers as DOM
-import qualified GHCJS.DOM.MouseEvent      as DOM
-import qualified GHCJS.DOM.Types           as DOM (uncheckedCastTo)
+import qualified GHCJS.DOM.HTMLElement as DOM
+import qualified GHCJS.DOM.MouseEvent as DOM
+import qualified GHCJS.DOM.Types as DOM (uncheckedCastTo)
 
-import           Language.Javascript.JSaddle
-import           Reflex.Dom                  hiding (mainWidget)
-import           Reflex.Dom.Core             (mainWidget)
-import           Obelisk.Generated.Static
+import Language.Javascript.JSaddle
+import Obelisk.Generated.Static
+import Reflex.Dom hiding (mainWidget)
+import Reflex.Dom.Core (mainWidget)
 
 main :: IO ()
 main = run $ mainWidget app

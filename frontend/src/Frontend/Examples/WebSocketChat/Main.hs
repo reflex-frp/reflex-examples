@@ -8,25 +8,24 @@
 
 module Frontend.Examples.WebSocketChat.Main where
 
+import Control.Monad (void)
+import Control.Monad.Fix (MonadFix)
 import qualified Data.Aeson as Aeson
-import           Data.ByteString    as B
-import           Data.ByteString.Lazy (toStrict, fromStrict)
-import           Data.List.NonEmpty
-import           Data.Monoid        ((<>))
-import qualified Data.Text          as T
-import           Data.Text (Text)
-import           GHCJS.DOM.HTMLElement       (focus)
-import           Language.Javascript.JSaddle
-import           Obelisk.Route
-import           Reflex
-import           Reflex.Dom
-import           Control.Monad.Fix (MonadFix)
-import           Control.Monad      (void)
-import           Text.URI
+import Data.ByteString as B
+import Data.ByteString.Lazy (fromStrict, toStrict)
+import Data.List.NonEmpty
+import qualified Data.Text as T
+import Data.Text (Text)
+import GHCJS.DOM.HTMLElement (focus)
+import Language.Javascript.JSaddle
+import Obelisk.Route
+import Reflex
+import Reflex.Dom
+import Text.URI
 
 --------------------------------------------------------------------------------
-import           Common.Examples.WebSocketChat.Message
-import           Common.Route
+import Common.Examples.WebSocketChat.Message
+import Common.Route
 --------------------------------------------------------------------------------
 
 -- TODO
@@ -77,7 +76,7 @@ app r = do
               return (_webSocket_recv ws)
     receivedMessages <- foldDyn (\m ms -> ms ++ [m]) [] eRecRespTxt
     void $ el "div" $ do
-      el "p" $ text "Responses from the backend chat -server:"
+      el "p" $ text "Responses from the backend chat-server:"
       el "ul" $ simpleList receivedMessages (\m -> el "li" $ dynText m)
   blank
   where

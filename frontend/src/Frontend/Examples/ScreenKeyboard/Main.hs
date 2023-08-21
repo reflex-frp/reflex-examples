@@ -12,16 +12,15 @@ module Frontend.Examples.ScreenKeyboard.Main where
  - buttons + real keyboard both writing to a text box
  -}
 
-import           Control.Monad               (forM, void)
-import           Control.Monad.Fix           (MonadFix)
-import qualified Data.List.NonEmpty          as DL (head)
-import           Data.Monoid                 ((<>))
-import qualified Data.Text                   as T
-import           Data.Text (Text)
-import           GHCJS.DOM.HTMLElement       (focus)
-import           GHCJS.DOM.HTMLInputElement  hiding (setValue)
-import           Language.Javascript.JSaddle
-import           Reflex.Dom
+import Control.Monad (forM, void)
+import Control.Monad.Fix (MonadFix)
+import qualified Data.List.NonEmpty as DL (head)
+import qualified Data.Text as T
+import Data.Text (Text)
+import GHCJS.DOM.HTMLElement (focus)
+import GHCJS.DOM.HTMLInputElement hiding (setValue)
+import Language.Javascript.JSaddle
+import Reflex.Dom
 
 -- import Language.Javascript.JSaddle.Warp
 

@@ -11,14 +11,12 @@ module Frontend.Examples.PegSolitaire.Main
   (app)
   where
 
-import           Control.Arrow     ((&&&))
-import           Data.Array.IArray as A
-import           Data.Monoid       ((<>))
-import qualified Data.Text         as T
-
-import           Reflex.Dom
-import           Obelisk.Generated.Static
+import Control.Arrow ((&&&))
 import Control.Monad.Fix (MonadFix)
+import Data.Array.IArray as A
+import qualified Data.Text as T
+import Obelisk.Generated.Static
+import Reflex.Dom.Core
 
 --------------------------------------------------------------------------------
 -- Model

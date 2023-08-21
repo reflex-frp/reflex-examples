@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# options_ghc -fno-warn-deprecations #-}
+
 module Frontend.Examples.ECharts.Main where
 
 import Reflex.Dom.Widget.ECharts

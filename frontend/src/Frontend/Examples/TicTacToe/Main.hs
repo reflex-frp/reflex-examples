@@ -6,14 +6,13 @@ module Frontend.Examples.TicTacToe.Main
   (app)
   where
 
-import qualified Data.Text         as T
-import Data.Text (Text)
 import Control.Monad (forM)
 import Control.Monad.Fix (MonadFix)
-import Data.List (elem)
-import Reflex.Dom
 import Data.Array (Array, Ix)
 import qualified Data.Array as A
+import qualified Data.Text as T
+import Data.Text (Text)
+import Reflex.Dom
 
 data Row =
   Row_1
@@ -62,8 +61,10 @@ app
      )
   => m ()
 app = divClass "game" $ do
-  let initState = State 0 []
-
+  let initState = State
+        { state_currentMove = 0
+        , state_moves = []
+        }
   rec
     let
       squares = ffor stateDyn $ \(State p mvs) -> makeSquares $ take p mvs

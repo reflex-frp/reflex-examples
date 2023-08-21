@@ -5,14 +5,13 @@
 
 module Frontend.Examples.NasaPod.Main where
 
-import           Data.Aeson                  (FromJSON, ToJSON)
-import           Data.Map                    (Map)
-import           Data.Monoid                 ((<>))
-import qualified Data.Text                   as T
-import           Data.Text (Text)
-import           GHC.Generics                (Generic)
-import           Reflex.Dom
 import Control.Monad.Fix (MonadFix)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.Map (Map)
+import qualified Data.Text as T
+import Data.Text (Text)
+import GHC.Generics (Generic)
+import Reflex.Dom
 
 data Apod =
   Apod { date           :: T.Text
@@ -77,10 +76,9 @@ apod apiKey = prerender_ (blank) $ do
     srcAttrDyn :: Dynamic t (Map T.Text T.Text)
       <- holdDyn mempty srcAttr
     elDynAttr "img" srcAttrDyn $ return ()
-    date <- textInput $ def &
-        attributes .~ constDyn ("placeholder" =: "YYYY-MM-DD")
+    date <- inputElement $ def &
+        inputElementConfig_elementConfig . elementConfig_initialAttributes .~ ("placeholder" =: "YYYY-MM-DD")
     let eValidDate = ffilter ((==10) . T.length) $ updated $ value date
     el "p" $
       dynText =<< holdDyn "Waiting for response" explEv
   return ()
-

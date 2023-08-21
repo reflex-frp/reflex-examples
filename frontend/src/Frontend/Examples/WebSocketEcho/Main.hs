@@ -4,11 +4,11 @@
 
 module Frontend.Examples.WebSocketEcho.Main where
 
-import           Control.Monad      (join)
-import           Data.Text.Encoding (encodeUtf8, decodeUtf8)
-import           Reflex.Dom         hiding (mainWidget)
-import           Reflex.Dom.Core    (mainWidget)
+import Control.Monad (join)
 import Control.Monad.Fix (MonadFix)
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Reflex.Dom hiding (mainWidget)
+import Reflex.Dom.Core (mainWidget)
 
 main :: IO ()
 main = run $ mainWidget app
@@ -30,11 +30,11 @@ app = do
             $ leftmost [b, keypress Enter t]
 
   receivedMessages <- fmap join $ prerender (return (constDyn [])) $ do
-    ws <- webSocket "wss://echo.websocket.org" $ def
+    ws <- webSocket "wss://ws.ifelse.io" $ def
       & webSocketConfig_send .~ newMessage
     foldDyn (\m ms -> ms ++ [m]) [] $ _webSocket_recv ws
 
-  el "p" $ text "Responses from the WebSocket.org echo service:"
+  el "p" $ text "Responses from the WebSocket echo service:"
   _ <- el "ul"
          $ simpleList receivedMessages
          $ \m -> el "li" $ dynText $ fmap decodeUtf8 m
@@ -45,5 +45,4 @@ header = do
   el "strong" $ do
     text " WebSocket test page"
   el "p" $ do
-    text "Send a message to the WebSocket.org: https://www.websocket.org/echo.html"
-    text "'s websocket echo service:"
+    text "Send a message to the WebSocket echo service (https://ws.ifelse.io/):"

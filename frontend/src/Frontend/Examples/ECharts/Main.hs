@@ -24,7 +24,7 @@ import Data.Time
 import Control.Lens
 import qualified Data.Some as Some
 import qualified Data.Aeson as Aeson
-import qualified Data.HashMap.Strict as HashMap
+import qualified Data.Aeson.KeyMap as KeyMap
 import qualified Data.Vector as V
 import System.Random
 import GHC.Generics (Generic)
@@ -511,9 +511,9 @@ rainfall =
       & series_markArea ?~ def
         { _markArea_silent = Just True
         , _markArea_data = Just $ Aeson.Array $ V.singleton $ Aeson.Array $ V.fromList
-            [ Aeson.Object $ HashMap.singleton "xAxis"
+            [ Aeson.Object $ KeyMap.singleton "xAxis"
               (Aeson.String $ dateF 9 12 7)
-            , Aeson.Object $ HashMap.singleton "xAxis"
+            , Aeson.Object $ KeyMap.singleton "xAxis"
               (Aeson.String $ dateF 9 22 7)
             ]
         }
@@ -527,9 +527,9 @@ rainfall =
       & series_markArea ?~ def
         { _markArea_silent = Just True
         , _markArea_data = Just $ Aeson.Array $ V.singleton $ Aeson.Array $ V.fromList
-            [ Aeson.Object $ HashMap.singleton "xAxis"
+            [ Aeson.Object $ KeyMap.singleton "xAxis"
               (Aeson.String $ dateF 9 10 7)
-            , Aeson.Object $ HashMap.singleton "xAxis"
+            , Aeson.Object $ KeyMap.singleton "xAxis"
               (Aeson.String $ dateF 9 20 7)
             ]
         }
@@ -779,7 +779,7 @@ rainfallAndWaterFlow = def
     }
   , _chartOptions_axisPointer = Just $ def
     { _axisPointer_link = Just $ Aeson.Object $
-      HashMap.singleton "xAxisIndex" (Aeson.String "all")
+      KeyMap.singleton "xAxisIndex" (Aeson.String "all")
     }
   , _chartOptions_dataZoom =
     [ def
@@ -902,12 +902,12 @@ aqiChart aqiData = def
       }
     , _visualMap_pieces = Just $ Aeson.Array $ V.fromList
       (ffor (zip sections (tail sections)) $ \((l, c), (h, _)) ->
-        Aeson.Object $ HashMap.fromList
+        Aeson.Object $ KeyMap.fromList
           [ ("gt", Aeson.Number l)
           , ("lte", Aeson.Number h)
           , ("color", Aeson.String c)
           ])
-        <> ((\(l,c) -> V.fromList [ Aeson.Object $ HashMap.fromList
+        <> ((\(l,c) -> V.fromList [ Aeson.Object $ KeyMap.fromList
              [ ("gt", Aeson.Number l)
              , ("color", Aeson.String c)
              ]
@@ -925,7 +925,7 @@ aqiChart aqiData = def
         { _markLine_silent = Just True
         , _markLine_data = Just $ Aeson.Array $ V.fromList $
           ffor (tail sections) $ \(l, _) ->
-            Aeson.Object $ HashMap.singleton "yAxis" (Aeson.Number l)
+            Aeson.Object $ KeyMap.singleton "yAxis" (Aeson.Number l)
         }
     ]
   }

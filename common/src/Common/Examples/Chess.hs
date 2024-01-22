@@ -204,9 +204,10 @@ basicMove promotionPiece brd turn old new = do
 
       clearPath = all isNothing $ (brd `indexGS`) <$> steps where
           nextStep (Point x y) = Point (step diffX x) (step diffY y)
-          step diff' x' = if diff' > 0
-            then x' + 1
-            else x' - 1
+          step diff' x' = case diff' `compare` 0 of
+            LT -> x' - 1
+            GT -> x' + 1
+            EQ -> x'
           steps = takeWhile (/= new) $ takeWhile isValidPoint $ iterate nextStep $ nextStep old
 
       -- in the form of potential additional board modifications

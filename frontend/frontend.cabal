@@ -41,6 +41,8 @@ library
     Frontend.Examples.Chess.Main
     Frontend.Examples.DisplayGameUpdates.Main
     Frontend.Examples.DragAndDrop.Main
+    Frontend.Examples.DragAndDropList.Main
+    Frontend.Examples.DragAndDropList.DragAndDropList
     Frontend.Examples.FileReader.Main
     Frontend.Examples.NasaPod.Main
     Frontend.Examples.PegSolitaire.Main
@@ -50,6 +52,7 @@ library
     Frontend.Examples.ECharts.ExamplesData
     Frontend.Examples.WebSocketChat.Main
     Frontend.Examples.WebSocketEcho.Main
+
   ghc-options: -Wall
 
 executable frontend

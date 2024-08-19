@@ -49,6 +49,7 @@ data Example :: * -> * where
   Example_BasicToDo :: Example ()
   Example_Chess :: Example ()
   Example_DragAndDrop :: Example ()
+  Example_DragAndDropList :: Example ()
   Example_FileReader :: Example ()
   Example_ScreenKeyboard :: Example ()
   Example_NasaPod :: Example ()
@@ -74,6 +75,7 @@ fullRouteEncoder = mkFullRouteEncoder (FullRoute_Backend BackendRoute_Missing :/
       Example_BasicToDo -> PathSegment "basictodo" $ unitEncoder mempty
       Example_Chess -> PathSegment "chess" $ unitEncoder mempty
       Example_DragAndDrop -> PathSegment "draganddrop" $ unitEncoder mempty
+      Example_DragAndDropList -> PathSegment "draganddroplist" $ unitEncoder mempty
       Example_FileReader -> PathSegment "filereader" $ unitEncoder mempty
       Example_ScreenKeyboard -> PathSegment "screenkeyboard" $ unitEncoder mempty
       Example_NasaPod -> PathSegment "nasapod" $ unitEncoder mempty
@@ -97,6 +99,7 @@ exampleTitle (Some.Some sec) = case sec of
   Example_BasicToDo -> "Basic To Do List"
   Example_Chess -> "Local Chess Game"
   Example_DragAndDrop -> "Drag n Drop"
+  Example_DragAndDropList -> "Drag n Drop List"
   Example_FileReader -> "File Reader"
   Example_ScreenKeyboard -> "Onscreen Keyboard"
   Example_NasaPod -> "Nasa: Picture of the Day"
@@ -122,6 +125,7 @@ sectionHomepage (Some.Some sec) = sec :/ case sec of
   Example_BasicToDo -> ()
   Example_Chess -> ()
   Example_DragAndDrop -> ()
+  Example_DragAndDropList -> ()
   Example_FileReader -> ()
   Example_ScreenKeyboard -> ()
   Example_NasaPod -> ()
@@ -139,6 +143,8 @@ exampleDescription (Some.Some sec) = case sec of
   Example_Chess -> "A simple chess game to be played against another local player"
   Example_DragAndDrop ->
     "An example to demonstrate Drag and Drop functionality"
+  Example_DragAndDropList -> 
+    "An example of a list that can be reordered with Drag and Drop"
   Example_FileReader ->
     "Read a file on the client using FileReader"
   Example_ScreenKeyboard ->
@@ -188,6 +194,7 @@ exampleSourceCode (sec :=> _) = base <> path <> file
       Example_BasicToDo -> "BasicToDo"
       Example_Chess -> "Chess"
       Example_DragAndDrop -> "DragAndDrop"
+      Example_DragAndDropList -> "DragAndDropList"
       Example_FileReader -> "FileReader"
       Example_ScreenKeyboard -> "ScreenKeyboard"
       Example_NasaPod -> "NasaPod"

@@ -29,6 +29,7 @@ import qualified Frontend.Examples.BasicToDo.Main as BasicToDo
 import qualified Frontend.Examples.Chess.Main as Chess
 import qualified Frontend.Examples.DisplayGameUpdates.Main as DisplayGameUpdates
 import qualified Frontend.Examples.DragAndDrop.Main as DragAndDrop
+import qualified Frontend.Examples.DragAndDropList.Main as DragAndDropList
 import qualified Frontend.Examples.ECharts.Main as ECharts
 import qualified Frontend.Examples.FileReader.Main as FileReader
 import qualified Frontend.Examples.NasaPod.Main as NasaPod
@@ -66,6 +67,7 @@ examples route _ = subRoute_ $ \case
   Example_BasicToDo -> BasicToDo.app
   Example_Chess -> Chess.app
   Example_DragAndDrop -> DragAndDrop.app
+  Example_DragAndDropList -> DragAndDropList.app
   Example_FileReader -> FileReader.app
   Example_ScreenKeyboard -> ScreenKeyboard.app
   Example_NasaPod -> NasaPod.app

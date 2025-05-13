@@ -21,7 +21,6 @@ library
                , reflex
                , reflex-dom
                , obelisk-generated-static
-               , reflex-dom-echarts
                , random
                , scientific
                , time
@@ -46,8 +45,6 @@ library
     Frontend.Examples.PegSolitaire.Main
     Frontend.Examples.ScreenKeyboard.Main
     Frontend.Examples.TicTacToe.Main
-    Frontend.Examples.ECharts.Main
-    Frontend.Examples.ECharts.ExamplesData
     Frontend.Examples.WebSocketChat.Main
     Frontend.Examples.WebSocketEcho.Main
   ghc-options: -Wall

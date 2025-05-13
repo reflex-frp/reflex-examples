@@ -29,7 +29,6 @@ import qualified Frontend.Examples.BasicToDo.Main as BasicToDo
 import qualified Frontend.Examples.Chess.Main as Chess
 import qualified Frontend.Examples.DisplayGameUpdates.Main as DisplayGameUpdates
 import qualified Frontend.Examples.DragAndDrop.Main as DragAndDrop
-import qualified Frontend.Examples.ECharts.Main as ECharts
 import qualified Frontend.Examples.FileReader.Main as FileReader
 import qualified Frontend.Examples.NasaPod.Main as NasaPod
 import qualified Frontend.Examples.PegSolitaire.Main as PegSolitaire
@@ -72,7 +71,6 @@ examples route _ = subRoute_ $ \case
   Example_PegSolitaire -> PegSolitaire.app
   Example_TicTacToe -> TicTacToe.app
   Example_DisplayGameUpdates -> DisplayGameUpdates.app
-  Example_ECharts -> ECharts.app route
   Example_WebSocketEcho -> WebSocketEcho.app
   Example_WebSocketChat -> WebSocketChat.app route
 

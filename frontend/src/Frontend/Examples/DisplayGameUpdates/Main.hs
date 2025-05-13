@@ -6,7 +6,8 @@ module Frontend.Examples.DisplayGameUpdates.Main
   where
 
 import Reflex.Dom
-import Data.Text as T
+import Data.Text (Text)
+import qualified Data.Text as T
 import Control.Monad.Fix (MonadFix)
 import Control.Monad (void)
 

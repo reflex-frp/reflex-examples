@@ -1,8 +1,8 @@
 {
   "owner": "obsidiansystems",
   "repo": "obelisk",
-  "branch": "develop",
+  "branch": "maralorn/wip-ghcjs-912",
   "private": false,
-  "rev": "4d2c5a70033fb1b63118b61c0490a522f0e21c17",
-  "sha256": "0diz9lm6748y8yh1k5rpx53c80sav6i1p6b3h6zf78dq1mq6r6kg"
+  "rev": "11f8cb89c624c10b7f46328cb857b540ee7b867f",
+  "sha256": "0wh5bql921hrazzd4frxwx21fnc1xmrr4vyy09g8wc9gcpi16871"
 }

@@ -8,6 +8,8 @@
 with obelisk;
 project ./. ({ hackGet, ... }: {
   inherit withHoogle;
+  __closureCompilerOptimizationLevel = null;
+  shellToolOverrides = _: _: { ob = (import ./.obelisk/impl {}).command; };
   packages = {
     reflex-dom-echarts = hackGet ./deps/reflex-dom-echarts;
     echarts-jsdom = hackGet ./deps/echarts-jsdom;

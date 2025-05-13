@@ -5,7 +5,7 @@
 module Frontend.Head (pageHead) where
 
 import Data.Map (Map)
-import Data.Text
+import Data.Text (Text)
 import qualified Data.Text as T
 import Obelisk.Generated.Static
 import Reflex.Dom
